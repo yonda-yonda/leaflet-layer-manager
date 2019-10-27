@@ -1,0 +1,27 @@
+{
+  "name": "raw-image",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.6.4",
+    "@babel/polyfill": "^7.6.0",
+    "@babel/preset-env": "^7.6.3",
+    "@babel/runtime-corejs2": "^7.6.3",
+    "babel-loader": "^8.0.6",
+    "gulp": "^4.0.2",
+    "terser-webpack-plugin": "^2.2.1",
+    "webpack": "^4.41.2",
+    "webpack-stream": "^5.2.1"
+  },
+  "dependencies": {
+    "georaster": "0.6.2",
+    "georaster-layer-for-leaflet": "0.2.5"
+  }
+}
