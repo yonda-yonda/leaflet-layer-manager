@@ -6,7 +6,7 @@ module.exports = {
     mode: "production",
     output: {
         path: path.join(__dirname, "dist"),
-        filename: "geotiff-viewer.js"
+        filename: "leaflet-layer-manager.js"
     },
     module: {
         rules: [{
@@ -36,5 +36,5 @@ module.exports = {
                 }
             },
         })],
-    },
+    }
 }

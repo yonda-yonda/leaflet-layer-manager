@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Leaflet Layer Manager</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"></script>
+    <script src="../dist/leaflet-layer-manager.js"></script>
+</head>
+
+<body>
+    <div id="map" style="width:600px;height:600px"></div>
+    <form>
+        <div id="baseLayers"></div>
+        <div id="overlays"></div>
+    </form>
+    <button id="sort">sort</button>
+</body>
+<script>
+    var map = L.map("map").setView([35.681236, 139.767125], 10);
+
+    var image_url = 'color_sample.png';
+
+
+    var baseLayers = [{
+        name: "標準地図",
+        layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
+            attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
+        })
+    }, {
+        name: "OpenStratMap",
+        layer: L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+        })
+    }, {
+        name: "色別標高図",
+        layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/relief/{z}/{x}/{y}.png", {
+            attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
+        })
+    }, {
+        name: "航空写真",
+        layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", {
+            attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
+        })
+    }];
+
+    var overlays = [{
+            name: "test3",
+            layer: L.layerGroup([L.imageOverlay(image_url, L.latLngBounds(
+                [35.731236, 139.767125],
+                [35.631236, 139.867125]
+            )), L.imageOverlay(image_url, L.latLngBounds(
+                [35.731236, 139.717125],
+                [35.631236, 139.817125]
+            ))])
+        },
+        {
+            name: "test2",
+            layer: L.imageOverlay(image_url, L.latLngBounds(
+                [35.681236, 139.767125],
+                [35.581236, 139.867125]
+            ))
+        }, {
+            name: "test1",
+            layer: L.imageOverlay(image_url, L.latLngBounds(
+                [35.631236, 139.817125],
+                [35.531236, 139.917125]
+            ))
+        }
+    ];
+
+    var m = LeafletLayerManager.create(map, baseLayers, overlays, {
+        defaultOpacity: 1
+    });
+
+    var baseLayerParent = document.getElementById("baseLayers");
+    for (var i = 0; i < baseLayers.length; i++) {
+        var div = document.createElement("div");
+        var label = document.createElement("label");
+        var input = document.createElement("input");
+        var name = baseLayers[i].name;
+        input.value = name;
+        input.name = "base";
+        input.type = "radio";
+        label.appendChild(input);
+        label.innerHTML = label.innerHTML + name;
+        div.appendChild(label);
+        baseLayerParent.appendChild(div);
+    }
+
+    var overlayParent = document.getElementById("overlays");
+    for (var i = 0; i < overlays.length; i++) {
+        var div = document.createElement("div");
+        var label = document.createElement("label");
+        var input = document.createElement("input");
+        var range = document.createElement("input");
+        var name = overlays[i].name;
+        input.value = name;
+        input.name = "overlay";
+        input.type = "checkbox";
+        label.appendChild(input);
+        label.innerHTML = label.innerHTML + name;
+        div.appendChild(label);
+        range.value = 100;
+        range.dataset.layer = name;
+        range.type = "range";
+        div.appendChild(document.createElement("br"));
+        div.appendChild(range);
+        overlayParent.appendChild(div);
+    }
+
+    var baseLayerInputs = document.getElementsByName("base");
+    baseLayerInputs[baseLayers.length - 1].checked = true
+    for (var i = 0; i < baseLayerInputs.length; i++) {
+        baseLayerInputs[i].addEventListener("click", function (e) {
+            var input = document.querySelector("[name=base]:checked");
+
+            m.selectBaseLayer(input.value);
+        });
+    }
+    var ranges = document.querySelectorAll("[data-layer]");
+    for (var i = 0; i < ranges.length; i++) {
+        ranges[i].addEventListener("change", function (e) {
+            m.setOpacityByName(e.target.dataset.layer, parseInt(e.target.value, 10) / 100);
+        });
+    }
+
+    var overlayInputs = document.getElementsByName("overlay");
+    for (var i = 0; i < overlayInputs.length; i++) {
+        overlayInputs[i].checked = true;
+        overlayInputs[i].addEventListener("click", function (e) {
+            var input = e.target;
+            if (input.checked) {
+                m.showOverlay(input.value)
+            } else {
+                m.hideOverlay(input.value)
+            }
+        });
+    }
+
+    document.getElementById("sort").addEventListener("click", function (e) {
+        m.sort(function compareNumbers(a, b) {
+            return a.index - b.index;
+        })
+    });
+</script>
+
+</html>

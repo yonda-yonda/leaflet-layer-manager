@@ -1,6 +1,6 @@
 {
-  "name": "raw-image",
-  "version": "1.0.0",
+  "name": "leaflet-layer-manager",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -21,7 +21,6 @@
     "webpack-stream": "^5.2.1"
   },
   "dependencies": {
-    "georaster": "0.6.2",
-    "georaster-layer-for-leaflet": "0.2.5"
+    "jquery-extend": "^2.0.3"
   }
 }
