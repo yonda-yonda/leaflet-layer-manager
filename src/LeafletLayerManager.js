@@ -57,7 +57,7 @@ class LeafletLayerManager {
         let showOverlayNames = options.hasOwnProperty('showOverlayNames') ? options.showOverlayNames : [];
         let showBaseLayerName = options.hasOwnProperty('showBaseLayerName') ? options.showBaseLayerName : '';
 
-        return new LeafletLayerManager(map, options).addLayerObjs(baseLayerObjs, overlayObjs, showBaseLayerName, showOverlayNames)
+        return new LeafletLayerManager(map, leafletOptions).addLayerObjs(baseLayerObjs, overlayObjs, showBaseLayerName, showOverlayNames)
     }
 
     constructor(map, options) {
