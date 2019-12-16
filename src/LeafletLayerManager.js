@@ -85,8 +85,8 @@ class LeafletLayerManager {
 
     _sort(sortRule) {
         // ソートする（ソートアルゴリズムは引き数(func)として指定できる）
-        if (sortRule) sortRule = this.options.defaultSortRule;
-        this._shownOverlayObjs.sort(sortRule);
+        if (!sortRule) sortRule = this.options.defaultSortRule;
+        this._shownOverlayObjs = this._shownOverlayObjs.sort(sortRule);
     }
 
     _isShownLayerObj(layerObj) {
@@ -100,26 +100,27 @@ class LeafletLayerManager {
         this.baseLayerObjs.forEach((layerObj) => {
             if (layerObj !== this._shownBaseLayerObj) {
                 this._setOpacity(layerObj.layer, 0);
-            } else {
-                this._shownBaseLayerObj.layer.setZIndex(this._lastZIndex++);
-                this._setOpacity(this._shownBaseLayerObj.layer, this._shownBaseLayerObj._opacity);
-                if (!this._shownBaseLayerObj._added) {
-                    this._shownBaseLayerObj._added = true;
-                    this.map.addLayer(this._shownBaseLayerObj.layer);
-                }
             }
         });
+        this._shownBaseLayerObj.layer.setZIndex(this._lastZIndex++);
+        this._setOpacity(this._shownBaseLayerObj.layer, this._shownBaseLayerObj._opacity);
+        if (!this._shownBaseLayerObj._added) {
+            this._shownBaseLayerObj._added = true;
+            this.map.addLayer(this._shownBaseLayerObj.layer);
+        }
 
         this.overlayObjs.forEach((layerObj) => {
             if (this._shownOverlayObjs.indexOf(layerObj) < 0) {
                 this._setOpacity(layerObj.layer, 0);
-            } else {
-                layerObj.layer.setZIndex(this._lastZIndex++);
-                this._setOpacity(layerObj.layer, layerObj._opacity);
-                if (!layerObj._added) {
-                    layerObj._added = true;
-                    this.map.addLayer(layerObj.layer);
-                }
+            }
+        });
+
+        this._shownOverlayObjs.forEach((layerObj) => {
+            layerObj.layer.setZIndex(this._lastZIndex++);
+            this._setOpacity(layerObj.layer, layerObj._opacity);
+            if (!layerObj._added) {
+                layerObj._added = true;
+                this.map.addLayer(layerObj.layer);
             }
         });
     }
@@ -160,8 +161,6 @@ class LeafletLayerManager {
         overlayObjs.forEach(layerObj => {
             this.addOverlayObj(layerObj, false);
             if (showOverlayNames.indexOf(layerObj.name) >= 0) {
-                add(layerObj, this._shownOverlayObjs);
-
                 let obj = this.findByName(layerObj.name);
                 const index = this._shownOverlayObjs.length;
                 this._shownOverlayObjs.splice(index, 0, obj);

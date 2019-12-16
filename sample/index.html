@@ -56,20 +56,23 @@
             )), L.imageOverlay(image_url, L.latLngBounds(
                 [35.681236, 139.717125],
                 [35.581236, 139.817125]
-            ))])
+            ))]),
+            index: 10
         },
         {
             name: "test2",
             layer: L.imageOverlay(image_url, L.latLngBounds(
                 [35.681236, 139.767125],
                 [35.581236, 139.867125]
-            ))
+            )),
+            index: 100
         }, {
             name: "test1",
             layer: L.imageOverlay(image_url, L.latLngBounds(
                 [35.631236, 139.817125],
                 [35.531236, 139.917125]
-            ))
+            )),
+            index: 1
         }
     ];
 
@@ -143,7 +146,7 @@
     }
 
     document.getElementById("sort").addEventListener("click", function (e) {
-        m.sort(function compareNumbers(a, b) {
+        m.sort(function (a, b) {
             return a.index - b.index;
         })
     });
