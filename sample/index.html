@@ -77,8 +77,11 @@
     ];
 
     var m = LeafletLayerManager.create(map, baseLayers, overlays, {
-        defaultOpacity: 1
-    }, ["test1", "test2", "test3"]);
+        leaflet: {
+            defaultOpacity: 1
+        },
+        showOverlayNames: ["test1", "test2", "test3"]
+    });
 
     var baseLayerParent = document.getElementById("baseLayers");
     for (var i = 0; i < baseLayers.length; i++) {

@@ -52,8 +52,12 @@ const setOpacityToLayer = (layer, opacity) => {
 */
 
 class LeafletLayerManager {
-    static create(map, baseLayerObjs, overlayObjs, options, showOverlayNames = []) {
-        return new LeafletLayerManager(map, options).addLayerObjs(baseLayerObjs, overlayObjs, showOverlayNames)
+    static create(map, baseLayerObjs, overlayObjs, options) {
+        let leafletOptions = options.hasOwnProperty('leaflet') ? options.leaflet : {};
+        let showOverlayNames = options.hasOwnProperty('showOverlayNames') ? options.showOverlayNames : [];
+        let showBaseLayerName = options.hasOwnProperty('showBaseLayerName') ? options.showBaseLayerName : '';
+
+        return new LeafletLayerManager(map, options).addLayerObjs(baseLayerObjs, overlayObjs, showBaseLayerName, showOverlayNames)
     }
 
     constructor(map, options) {
@@ -152,7 +156,7 @@ class LeafletLayerManager {
         }
     }
 
-    addLayerObjs(baseLayerObjs, overlayObjs, showOverlayNames, sort) {
+    addLayerObjs(baseLayerObjs, overlayObjs, showBaseLayerName, showOverlayNames, sort) {
         // ベースレイヤー、オーバーレイを一度に追加
         if (typeof sort === 'undefined') sort = this.options.defaultSort;
         baseLayerObjs.forEach(layerObj => {
@@ -166,7 +170,13 @@ class LeafletLayerManager {
                 this._shownOverlayObjs.splice(index, 0, obj);
             }
         });
-        this._shownBaseLayerObj = this.baseLayerObjs[this.baseLayerObjs.length - 1];
+
+        const layerObj = this.findByName(showBaseLayerName);
+        if (layerObj) {
+            this._shownBaseLayerObj = layerObj;
+        } else {
+            this._shownBaseLayerObj = this.baseLayerObjs[this.baseLayerObjs.length - 1];
+        }
         this._update();
         return this;
     }
