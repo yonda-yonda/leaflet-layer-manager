@@ -20,9 +20,40 @@ const remove = (target, list) => {
     if (index >= 0) return list.splice(index, 1);
 }
 
+const setOpacityToLayer = (layer, opacity) => {
+    if ('setOpacity' in layer) {
+        layer.setOpacity(opacity);
+    } else if (layer.hasOwnProperty('_layers')) {
+        // グループレイヤーのための処理
+        Object.values(layer._layers).forEach((childLayer) => {
+            setOpacityToLayer(childLayer, opacity);
+        })
+    }
+}
+
+/*
+    # レイヤーオブジェ
+    ## ユーザーが指定する要素
+    name: 識別するための名称
+    layer: leafletのレイヤー(レイヤーグループも可、 ただしレイヤーグループ内の重なり順は制御できない）
+    
+    ## マネージャー側で指定する要素
+    _opacity: 透過率(保存用)
+    _added: 追加済みかのフラグ
+
+    ## サンプル
+    {
+        name: "test",
+        layer: L.imageOverlay(image_url, L.latLngBounds(
+            [35.681236, 139.767125],
+            [35.581236, 139.867125]
+        ))
+    }
+*/
+
 class LeafletLayerManager {
-    static create(map, baseLayerObjs, overlayObjs, options) {
-        return new LeafletLayerManager(map, options).addLayerObjs(baseLayerObjs, overlayObjs)
+    static create(map, baseLayerObjs, overlayObjs, options, showOverlayNames = []) {
+        return new LeafletLayerManager(map, options).addLayerObjs(baseLayerObjs, overlayObjs, showOverlayNames)
     }
 
     constructor(map, options) {
@@ -30,69 +61,76 @@ class LeafletLayerManager {
         this.options = extend(true, defaultOptions, options);
         this.baseLayerObjs = [];
         this.overlayObjs = [];
-        this._showBaseLayer = null;
-        this._showOverlays = [];
+        this._shownBaseLayerObj = null;
+        this._shownOverlayObjs = []; // 重なり順を記録
         this._lastZIndex = 0;
 
         return this;
     }
 
     _getLayerObjs() {
+        // ベース、オーバーレイ問わずレイヤーオブジェすべてを取得
         return this.baseLayerObjs.concat(this.overlayObjs);
     }
 
     _getLayerId(layer) {
+        // レイヤーのidを取得 
         return layer._leaflet_id
     }
 
     _isBaseLayer(layerObj) {
+        // レイヤーがベースレイヤーか判定
         return this.baseLayerObjs.indexOf(layerObj) >= 0
     }
 
     _sort(sortRule) {
+        // ソートする（ソートアルゴリズムは引き数(func)として指定できる）
         if (sortRule) sortRule = this.options.defaultSortRule;
-        this._showOverlays.sort(sortRule);
+        this._shownOverlayObjs.sort(sortRule);
     }
 
-    _shown(layerObj) {
-        return [this._showBaseLayer].concat(this._showOverlays).indexOf(layerObj) >= 0;
+    _isShownLayerObj(layerObj) {
+        // レイヤーが表示中か判定
+        return [this._shownBaseLayerObj].concat(this._shownOverlayObjs).indexOf(layerObj) >= 0;
     }
 
     _update() {
-        const layerObjs = this._getLayerObjs();
-
-        const hiddenLayerObjs = [];
-        this.baseLayerObjs.forEach((layerObj) => {
-            if (layerObj !== this._showBaseLayer) {
-                if (this.map.hasLayer(layerObj.layer)) {
-                    this.map.removeLayer(layerObj.layer);
-                }
-            }
-        });
-        this.overlayObjs.forEach((layerObj) => {
-            if (this._showOverlays.indexOf(layerObj) < 0) {
-                if (this.map.hasLayer(layerObj.layer)) {
-                    this.map.removeLayer(layerObj.layer);
-                }
-            }
-        });
-
+        // 表示を更新
         this._lastZIndex = 0;
-        this._showBaseLayer.layer.setZIndex(this._lastZIndex++);
-        if (!this.map.hasLayer(this._showBaseLayer.layer)) {
-            this.map.addLayer(this._showBaseLayer.layer);
-        }
-        this._showOverlays.forEach(layerObj => {
-            layerObj.layer.setZIndex(this._lastZIndex++);
-            this.map.addLayer(layerObj.layer);
-        })
+        this.baseLayerObjs.forEach((layerObj) => {
+            if (layerObj !== this._shownBaseLayerObj) {
+                this._setOpacity(layerObj.layer, 0);
+            } else {
+                this._shownBaseLayerObj.layer.setZIndex(this._lastZIndex++);
+                this._setOpacity(this._shownBaseLayerObj.layer, this._shownBaseLayerObj._opacity);
+                if (!this._shownBaseLayerObj._added) {
+                    this._shownBaseLayerObj._added = true;
+                    this.map.addLayer(this._shownBaseLayerObj.layer);
+                }
+            }
+        });
+
+        this.overlayObjs.forEach((layerObj) => {
+            if (this._shownOverlayObjs.indexOf(layerObj) < 0) {
+                this._setOpacity(layerObj.layer, 0);
+            } else {
+                layerObj.layer.setZIndex(this._lastZIndex++);
+                this._setOpacity(layerObj.layer, layerObj._opacity);
+                if (!layerObj._added) {
+                    layerObj._added = true;
+                    this.map.addLayer(layerObj.layer);
+                }
+            }
+        });
     }
 
     findByLayer(layer) {
+        // レイヤーからレイヤーオブジェを探索する
         return this.findById(this._getLayerId(layer));
     }
 
     findById(id) {
+        // idからレイヤーオブジェを探索する
         const layerObjs = this._getLayerObjs();
         for (var i = 0; i < layerObjs.length; i++) {
             var layerObj = layerObjs[i];
@@ -103,6 +141,7 @@ class LeafletLayerManager {
     }
 
     findByName(name) {
+        // nameからレイヤーオブジェを探索する
         const layerObjs = this._getLayerObjs();
         for (var i = 0; i < layerObjs.length; i++) {
             var layerObj = layerObjs[i];
@@ -112,22 +151,38 @@ class LeafletLayerManager {
         }
     }
 
-    addLayerObjs(baseLayerObjs, overlayObjs, sort) {
+    addLayerObjs(baseLayerObjs, overlayObjs, showOverlayNames, sort) {
+        // ベースレイヤー、オーバーレイを一度に追加
         if (typeof sort === 'undefined') sort = this.options.defaultSort;
         baseLayerObjs.forEach(layerObj => {
             this.addBaseLayerObj(layerObj, false);
         });
         overlayObjs.forEach(layerObj => {
             this.addOverlayObj(layerObj, false);
-            add(layerObj, this._showOverlays);
+            if (showOverlayNames.indexOf(layerObj.name) >= 0) {
+                add(layerObj, this._shownOverlayObjs);
+
+                let obj = this.findByName(layerObj.name);
+                const index = this._shownOverlayObjs.length;
+                this._shownOverlayObjs.splice(index, 0, obj);
+            }
         });
-        this._showBaseLayer = baseLayerObjs[baseLayerObjs.length - 1];
+        this._shownBaseLayerObj = this.baseLayerObjs[this.baseLayerObjs.length - 1];
         this._update();
         return this;
     }
 
+    _setupLayerObj(layerObj, opacity) {
+        // レイヤーオブジェに内部処理で必要な情報を付加
+        return Object.assign({
+            _opacity: opacity,
+            _added: false
+        }, layerObj);
+    }
+
     addBaseLayerObj(layerObj, show = true) {
-        add(layerObj, this.baseLayerObjs);
+        // ベースレイヤーを追加
+        add(this._setupLayerObj(layerObj, 1), this.baseLayerObjs);
         if (show) {
             this.selectBaseLayer(layerObj.name);
         }
@@ -135,17 +190,19 @@ class LeafletLayerManager {
     }
 
     selectBaseLayer(name) {
+        // ベースレイヤーを変更する
         const layerObj = this.findByName(name);
         if (layerObj) {
-            this._showBaseLayer = layerObj;
+            this._shownBaseLayerObj = layerObj;
+
             this._update();
         }
         return this;
     }
 
     addOverlayObj(layerObj, show = true, sort) {
-        this._setOpacity(layerObj.layer, this.options.defaultOpacity);
-        add(layerObj, this.overlayObjs);
+        // オーバーレイを追加
+        add(this._setupLayerObj(layerObj, this.options.defaultOpacity), this.overlayObjs);
         if (show) {
             this.showOverlay(layerObj.name, sort);
         }
@@ -153,16 +210,22 @@ class LeafletLayerManager {
     }
 
     showOverlay(name, sort, index) {
+        // オーバーレイを表示する
         if (typeof sort === 'undefined') sort = this.options.defaultSort;
-        const layerObj = this.findByName(name);
-        if (layerObj && !this._shown(layerObj)) {
-            var index;
-            if (typeof index !== 'number' || index > this._showOverlays.legth) {
-                index = this._showOverlays.length;
+        let layerObj = this.findByName(name);
+
+        if (layerObj) {
+            if (typeof index !== 'number' || index > this._shownOverlayObjs.legth) {
+                index = this._shownOverlayObjs.length;
             } else if (index < 0) {
                 index = 0;
             }
-            this._showOverlays.splice(index, 0, layerObj);
+
+            // 表示中であれば一度消す
+            remove(layerObj, this._shownOverlayObjs);
+            // 追加
+            this._shownOverlayObjs.splice(index, 0, layerObj);
+
             if (sort) this._sort();
             this._update();
         }
@@ -170,34 +233,32 @@ class LeafletLayerManager {
     }
 
     hideOverlay(name) {
+        // オーバーレイを非表示にする
         const layerObj = this.findByName(name);
         if (layerObj) {
-            remove(layerObj, this._showOverlays);
+            remove(layerObj, this._shownOverlayObjs);
             this._update();
         }
         return this;
     }
 
     _setOpacity(layer, opacity) {
-        const setToLayer = (layer, opacity) => {
-            if ('setOpacity' in layer) {
-                layer.setOpacity(opacity);
-            } else if (layer.hasOwnProperty('_layers')) {
-                Object.values(layer._layers).forEach((childLayer) => {
-                    setToLayer(childLayer, opacity);
-                })
-            }
-        }
-        setToLayer(layer, opacity);
+        // 透過率を変更する
+        setOpacityToLayer(layer, opacity);
     }
 
     setOpacityByName(name, opacity) {
-        if (typeof opacity === 'undefined') opacity = this.options.defaultOpacity;
-        this._setOpacity(this.findByName(name).layer, opacity);
+        // nameでレイヤーを指定して透過率を変更する
+        const layerObj = this.findByName(name);
+        layerObj._opacity = opacity;
+        if (this._isShownLayerObj(layerObj)) {
+            this._setOpacity(layerObj.layer, opacity);
+        }
         return this;
     }
 
     removeLayer(layer) {
+        // レイヤーをマネージャーから削除する
         var layerObj;
         if (typeof layer === 'string') {
             layerObj = this.findByName(layer);
@@ -208,14 +269,18 @@ class LeafletLayerManager {
         if (layerObj) {
             if (this._isBaseLayer(layerObj)) {
                 remove(layerObj, this._baseLayerObjs);
+                this._shownBaseLayerObj = this._baseLayerObjs[this._baseLayerObjs.length - 1];
             } else {
                 remove(layerObj, this._overLayObjs);
+                remove(layerObj, this._shownOverlayObjs);
             }
         }
+        this._update();
         return this;
     }
 
     fitBounds(layer) {
+        // レイヤーのfitBoundsを返す
         var layerObj;
         if (typeof layer === 'string') {
             layerObj = this.findByName(layer);
@@ -228,6 +293,7 @@ class LeafletLayerManager {
     }
 
     sort(sortRule) {
+        // ソートする
         this._sort(sortRule);
         this._update();
     }

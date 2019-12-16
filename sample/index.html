@@ -53,6 +53,9 @@
             )), L.imageOverlay(image_url, L.latLngBounds(
                 [35.731236, 139.717125],
                 [35.631236, 139.817125]
+            )), L.imageOverlay(image_url, L.latLngBounds(
+                [35.681236, 139.717125],
+                [35.581236, 139.817125]
             ))])
         },
         {
@@ -72,7 +75,7 @@
 
     var m = LeafletLayerManager.create(map, baseLayers, overlays, {
         defaultOpacity: 1
-    });
+    }, ["test1", "test2", "test3"]);
 
     var baseLayerParent = document.getElementById("baseLayers");
     for (var i = 0; i < baseLayers.length; i++) {
