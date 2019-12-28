@@ -7,21 +7,73 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"></script>
     <script src="../dist/leaflet-layer-manager.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        #layers,
+        #add,
+        #sort {
+            display: block;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        #map {
+            width: 600px;
+            height: 600px
+        }
+
+        .main {
+            display: table;
+            width: 100%;
+        }
+
+        .map {
+            display: table-cell;
+            vertical-align: top;
+            width: 620px;
+        }
+
+        .controllers {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .order-item {
+            margin-top: 10px;
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: ghostwhite;
+            cursor: grab;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="map" style="width:600px;height:600px"></div>
-    <form>
-        <div id="baseLayers"></div>
-        <div id="overlays"></div>
-    </form>
-    <button id="sort">sort</button>
-</body>
+    <div class="main">
+        <div class="map">
+            <div id="map"></div>
+        </div>
+        <div class="controllers">
+            <form>
+                <div id="baseLayers"></div>
+                <div id="layers"></div>
+            </form>
+            <button id="add" type="button">add</button>
+
+            <div id="sort">
+                <button id="sort_index" type="button">sort by index</button>
+                <button id="sort_name" type="button">sort by name</button>
+            </div>
+            <div>
+                <div>重なり順</div>
+                <div id="order"></div>
+            </div>
+        </div>
+    </div>
+</body Sortable.create(document.getElementById("layers"), { onEnd: function ( /**Event*/ evt) { console.log(evt); } });>
 <script>
     var map = L.map("map").setView([35.681236, 139.767125], 10);
-
-    var image_url = 'color_sample.png';
-
 
     var baseLayers = [{
         name: "標準地図",
@@ -33,62 +85,113 @@
         layer: L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         })
-    }, {
-        name: "色別標高図",
-        layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/relief/{z}/{x}/{y}.png", {
-            attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
-        })
-    }, {
-        name: "航空写真",
-        layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", {
-            attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
-        })
     }];
 
-    var overlays = [{
+
+    var layers = [{
+            name: "test4",
+            layer: L.imageOverlay('6.png', L.latLngBounds(
+                [35.7465122599185, 139.658203125],
+                [35.67514743608467, 139.74609375]
+            )),
+            params: {
+                index: 1
+            }
+        },
+        {
             name: "test3",
-            layer: L.layerGroup([L.imageOverlay(image_url, L.latLngBounds(
-                [35.731236, 139.767125],
-                [35.631236, 139.867125]
-            )), L.imageOverlay(image_url, L.latLngBounds(
-                [35.731236, 139.717125],
-                [35.631236, 139.817125]
-            )), L.imageOverlay(image_url, L.latLngBounds(
-                [35.681236, 139.717125],
-                [35.581236, 139.817125]
-            ))]),
-            index: 10
+            layer: [{
+                    name: "test3_1",
+                    layer: L.imageOverlay('1.png', L.latLngBounds(
+                        [35.67514743608467, 139.74609375],
+                        [35.6037187406973, 139.833984375]
+                    ))
+                }, {
+                    name: "test3_2",
+                    layer: L.imageOverlay('2.png', L.latLngBounds(
+                        [35.67514743608467, 139.7900390625],
+                        [35.6037187406973, 139.8779296875]
+                    ))
+                },
+                {
+                    name: "test3_3",
+                    layer: L.imageOverlay('3.png', L.latLngBounds(
+                        [35.63944106897394, 139.7900390625],
+                        [35.56798045801208, 139.8779296875]
+                    ))
+                }
+            ],
+            params: {
+                index: 2
+            }
         },
         {
             name: "test2",
-            layer: L.imageOverlay(image_url, L.latLngBounds(
-                [35.681236, 139.767125],
-                [35.581236, 139.867125]
+            layer: L.imageOverlay('4.png', L.latLngBounds(
+                [35.67514743608467, 139.833984375],
+                [35.6037187406973, 139.921875]
             )),
-            index: 100
+            params: {
+                index: 3
+            }
         }, {
             name: "test1",
-            layer: L.imageOverlay(image_url, L.latLngBounds(
-                [35.631236, 139.817125],
-                [35.531236, 139.917125]
+            layer: L.imageOverlay('5.png', L.latLngBounds(
+                [35.6037187406973, 139.74609375],
+                [35.532226227703376, 139.833984375]
             )),
-            index: 1
+            params: {
+                index: 4
+            }
+        }, {
+            name: "色別標高図(tileLayer)",
+            layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/relief/{z}/{x}/{y}.png", {
+                attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
+            }),
+            params: {
+                index: 1001
+            }
+        }, {
+            name: "航空写真(tileLayer)",
+            layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", {
+                attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
+            }),
+            params: {
+                index: 1000
+            }
         }
     ];
 
-    var m = LeafletLayerManager.create(map, baseLayers, overlays, {
-        leaflet: {
-            defaultOpacity: 1
-        },
-        showOverlayNames: ["test1", "test2", "test3"]
+    var baseLyrs = [];
+    for (var i = 0; i < baseLayers.length; i++) {
+        baseLyrs.push(LeafletLayerManager.createLyr(baseLayers[i].name, baseLayers[i].layer,
+            baseLayers[i].params));
+    }
+    var selectedBaseLyrName = baseLyrs[baseLyrs.length - 1].name;
+    var lyrs = [];
+    var showLyrNames = [];
+    for (var i = 0; i < layers.length; i++) {
+        lyrs.push(LeafletLayerManager.createLyr(layers[i].name,
+            layers[i].layer, layers[i].params));
+        if (layers[i].name.startsWith('test')) {
+            showLyrNames.push(layers[i].name);
+        }
+    }
+
+
+    var m = LeafletLayerManager.create(map, {
+        "baseLyrs": baseLyrs,
+        "lyrs": lyrs,
+        "showLyrNames": showLyrNames,
+        "selectedBaseLyrName": selectedBaseLyrName
     });
 
-    var baseLayerParent = document.getElementById("baseLayers");
-    for (var i = 0; i < baseLayers.length; i++) {
+
+    function baseLayerController(name) {
+        var baseLayerParent = document.getElementById("baseLayers");
         var div = document.createElement("div");
         var label = document.createElement("label");
         var input = document.createElement("input");
-        var name = baseLayers[i].name;
         input.value = name;
         input.name = "base";
         input.type = "radio";
@@ -96,62 +199,106 @@
         label.innerHTML = label.innerHTML + name;
         div.appendChild(label);
         baseLayerParent.appendChild(div);
+
+        var baseLayerInput = document.querySelector('input[name=base][value="' + name + '"]');
+        baseLayerInput.checked = true
+        baseLayerInput.addEventListener("click", function (e) {
+            var input = document.querySelector("[name=base]:checked");
+            m.selectBaseLyr(input.value);
+        });
+
     }
 
-    var overlayParent = document.getElementById("overlays");
-    for (var i = 0; i < overlays.length; i++) {
+    function layerController(name, show) {
+        var layersParent = document.getElementById("layers");
         var div = document.createElement("div");
         var label = document.createElement("label");
         var input = document.createElement("input");
         var range = document.createElement("input");
-        var name = overlays[i].name;
         input.value = name;
-        input.name = "overlay";
+        input.name = "layers";
         input.type = "checkbox";
-        label.appendChild(input);
         label.innerHTML = label.innerHTML + name;
-        div.appendChild(label);
         range.value = 100;
         range.dataset.layer = name;
         range.type = "range";
-        div.appendChild(document.createElement("br"));
-        div.appendChild(range);
-        overlayParent.appendChild(div);
-    }
 
-    var baseLayerInputs = document.getElementsByName("base");
-    baseLayerInputs[baseLayers.length - 1].checked = true
-    for (var i = 0; i < baseLayerInputs.length; i++) {
-        baseLayerInputs[i].addEventListener("click", function (e) {
-            var input = document.querySelector("[name=base]:checked");
-
-            m.selectBaseLayer(input.value);
-        });
-    }
-    var ranges = document.querySelectorAll("[data-layer]");
-    for (var i = 0; i < ranges.length; i++) {
-        ranges[i].addEventListener("change", function (e) {
-            m.setOpacityByName(e.target.dataset.layer, parseInt(e.target.value, 10) / 100);
-        });
-    }
-
-    var overlayInputs = document.getElementsByName("overlay");
-    for (var i = 0; i < overlayInputs.length; i++) {
-        overlayInputs[i].checked = true;
-        overlayInputs[i].addEventListener("click", function (e) {
+        if (show) {
+            input.checked = true;
+        }
+        input.addEventListener("click", function (e) {
             var input = e.target;
             if (input.checked) {
-                m.showOverlay(input.value)
+                m.showLyr(input.value)
             } else {
-                m.hideOverlay(input.value)
+                m.hideLyr(input.value)
             }
         });
+        range.addEventListener("change", function (e) {
+            m.setOpacity(e.target.dataset.layer, parseInt(e.target.value, 10) / 100);
+        });
+
+        range.addEventListener("click", function (e) {
+            e.preventDefault();
+        });
+
+        label.appendChild(input);
+        div.appendChild(label);
+        div.appendChild(document.createElement("br"));
+        div.appendChild(range);
+        layersParent.appendChild(div);
+
+        var orderParent = document.getElementById("order");
+        var order = document.createElement("div");
+        order.innerHTML = name;
+        order.className = "order-item";
+        orderParent.appendChild(order);
     }
 
-    document.getElementById("sort").addEventListener("click", function (e) {
+    for (var i = 0; i < baseLayers.length; i++) {
+        baseLayerController(baseLayers[i].name)
+    }
+
+    for (var i = 0; i < layers.length; i++) {
+        layerController(layers[i].name, showLyrNames.indexOf(layers[i].name) > -1)
+    }
+
+    document.getElementById("sort_index").addEventListener("click", function (e) {
         m.sort(function (a, b) {
-            return a.index - b.index;
+            return a.params.index - b.params.index;
         })
+    });
+    document.getElementById("sort_name").addEventListener("click", function (e) {
+        m.sort()
+    });
+
+    var newLayer = {
+        name: "test5",
+        layer: L.imageOverlay('6.png', L.latLngBounds(
+            [35.7465122599185, 139.658203125],
+            [35.6037187406973, 139.833984375]
+        )),
+        params: {
+            index: 0
+        }
+    }
+    var addedNewLayer = false;
+    document.getElementById("add").addEventListener("click", function (e) {
+        if (!addedNewLayer) {
+            e.target.disabled = true;
+            m.addLyr(LeafletLayerManager.createLyr(newLayer.name, newLayer.layer,
+                newLayer.params));
+            addedNewLayer = true;
+
+            layerController(newLayer.name, true);
+        }
+    });
+
+
+    Sortable.create(document.getElementById("order"), {
+        onEnd: function (evt) {
+            m.move(evt.oldIndex, evt.newIndex);
+        }
     });
 </script>
 
