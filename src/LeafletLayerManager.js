@@ -135,7 +135,7 @@ class LyrGroup {
     setZIndex(zIndex, all = false) {
         // 表示順通りに重なり順を更新する、レイヤー数分加算したzIndexを返却する
         this._minZIndex = zIndex;
-        this._minZIndex = zIndex + this._shownLyrNames.length;
+        this._maxZIndex = zIndex + this._shownLyrNames.length;
         let z = zIndex;
 
         this._lyrs.forEach((lyr) => {
@@ -283,16 +283,9 @@ class LyrGroup {
     }
 
     _sort(sortRule) {
-        // 表示中のレイヤーをLyrオブジェクトの情報を元に並び替え
+        // レイヤーをLyrオブジェクトの情報を元に並び替え
         if (sortRule) {
-            let shownLyrs = this._shownLyrNames.map((name) => {
-                return this.findByName(name);
-            })
-            shownLyrs.sort(sortRule);
-
-            this._shownLyrNames = shownLyrs.map((lyr) => {
-                return lyr.name
-            })
+            this._lyrs.sort(sortRule);
         }
     }
 
@@ -377,19 +370,14 @@ class LeafletLayerManager {
     _sort(sortRule, deeply = false) {
         // 表示中のレイヤーをLyrオブジェクトの情報を元に並び替え
         if (!sortRule) sortRule = this.options.defaultSortRule;
-        let shownLyrs = [];
-
-        this._shownLyrNames.forEach((name) => {
-            const lyr = this.findByName(name);
-            if (deeply === true && lyr instanceof LyrGroup) {
-                lyr._sort(sortRule);
-            }
-            shownLyrs.push(lyr);
-        })
-        shownLyrs.sort(sortRule);
-        this._shownLyrNames = shownLyrs.map((lyr) => {
-            return lyr.name
-        })
+        this._lyrs.sort(sortRule);
+        if (deeply === true) {
+            this._lyrs.forEach((lyr) => {
+                if (lyr instanceof LyrGroup) {
+                    lyr._sort(sortRule);
+                }
+            })
+        }
     }
 
     _addAttribution(lyr) {

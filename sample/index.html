@@ -71,7 +71,7 @@
             </div>
         </div>
     </div>
-</body Sortable.create(document.getElementById("layers"), { onEnd: function ( /**Event*/ evt) { console.log(evt); } });>
+</body>
 <script>
     var map = L.map("map").setView([35.681236, 139.767125], 10);
 
@@ -91,8 +91,8 @@
     var layers = [{
             name: "test4",
             layer: L.imageOverlay('6.png', L.latLngBounds(
-                [35.7465122599185, 139.658203125],
-                [35.67514743608467, 139.74609375]
+                [35.71083783530008, 139.7021484375],
+                [35.63944106897394, 139.7900390625]
             )),
             params: {
                 index: 1
@@ -101,24 +101,33 @@
         {
             name: "test3",
             layer: [{
-                    name: "test3_1",
+                    name: "test3_3",
                     layer: L.imageOverlay('1.png', L.latLngBounds(
                         [35.67514743608467, 139.74609375],
                         [35.6037187406973, 139.833984375]
-                    ))
+                    )),
+                    params: {
+                        index: 1
+                    }
                 }, {
                     name: "test3_2",
                     layer: L.imageOverlay('2.png', L.latLngBounds(
                         [35.67514743608467, 139.7900390625],
                         [35.6037187406973, 139.8779296875]
-                    ))
+                    )),
+                    params: {
+                        index: 2
+                    }
                 },
                 {
-                    name: "test3_3",
+                    name: "test3_1",
                     layer: L.imageOverlay('3.png', L.latLngBounds(
                         [35.63944106897394, 139.7900390625],
                         [35.56798045801208, 139.8779296875]
-                    ))
+                    )),
+                    params: {
+                        index: 3
+                    }
                 }
             ],
             params: {
@@ -266,10 +275,10 @@
     document.getElementById("sort_index").addEventListener("click", function (e) {
         m.sort(function (a, b) {
             return a.params.index - b.params.index;
-        })
+        }, true)
     });
     document.getElementById("sort_name").addEventListener("click", function (e) {
-        m.sort()
+        m.sort(undefined, true)
     });
 
     var newLayer = {
