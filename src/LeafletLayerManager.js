@@ -392,12 +392,38 @@ class LeafletLayerManager {
         })
     }
 
+    _addAttribution(lyr) {
+        if (lyr instanceof LyrGroup) {
+            lyr._lyrs.forEach((l) => {
+                this._addAttribution(l);
+            })
+        } else {
+            if (typeof lyr.layer.options !== "undefined" && typeof lyr.layer.options.attribution !== "undefined") {
+                this.map.attributionControl.addAttribution(lyr.layer.options.attribution)
+            }
+        }
+
+    }
+
+    _removeAttribution(lyr) {
+        if (lyr instanceof LyrGroup) {
+            lyr._lyrs.forEach((l) => {
+                this._removeAttribution(l);
+            })
+        } else {
+            if (typeof lyr.layer.options !== "undefined" && typeof lyr.layer.options.attribution !== "undefined") {
+                this.map.attributionControl.removeAttribution(lyr.layer.options.attribution)
+            }
+        }
+    }
+
     _update() {
         // 表示を更新、地図に追加されていないレイヤーは追加する
         this._lastZIndex = 0;
         this._baseLyrs.forEach((lyr) => {
             if (lyr.name !== this._selectedBaseLyrName) {
                 lyr.hide();
+                this._removeAttribution(lyr);
             }
         });
         const baseLyr = this.findByName(this._selectedBaseLyrName);
@@ -406,17 +432,20 @@ class LeafletLayerManager {
                 baseLyr.addToMap(this.map);
             }
             baseLyr.show();
+            this._addAttribution(baseLyr);
             this._lastZIndex = baseLyr.setZIndex(this._lastZIndex);
         }
 
         this._lyrs.forEach((lyr) => {
             if (this._shownLyrNames.indexOf(lyr.name) < 0) {
                 lyr.hide();
+                this._removeAttribution(lyr);
             } else {
                 if (!lyr.isAdded()) {
                     lyr.addToMap(this.map);
                 }
                 lyr.show();
+                this._addAttribution(lyr);
                 this._lastZIndex = lyr.setZIndex(this._lastZIndex);
             }
         });
