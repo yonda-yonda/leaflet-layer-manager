@@ -11,7 +11,6 @@
   "license": "ISC",
   "devDependencies": {
     "@babel/core": "^7.7.7",
-    "@babel/polyfill": "^7.7.0",
     "@babel/preset-env": "^7.7.7",
     "babel-loader": "^8.0.6",
     "gulp": "^4.0.2",
@@ -23,5 +22,6 @@
     "core-js": "^3.6.1",
     "jquery-extend": "^2.0.3",
     "regenerator-runtime": "^0.13.3"
-  }
+  },
+  "private": true
 }

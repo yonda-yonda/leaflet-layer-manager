@@ -1,4 +1,4 @@
-import 'core-js';
+import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 import extend from 'jquery-extend';
 
