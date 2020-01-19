@@ -25,8 +25,7 @@ const add = (target, list, index = undefined) => {
 }
 
 const remove = (target, list) => {
-    const index = list.indexOf(target);
-    if (index >= 0) list.splice(index, 1);
+    if (list.includes(target)) list.splice(list.indexOf(target), 1);
 }
 
 class Lyr {
@@ -139,7 +138,7 @@ class LyrGroup {
         let z = zIndex;
 
         this._lyrs.forEach((lyr) => {
-            if (all === true || this._shownLyrNames.indexOf(lyr.name) > -1) {
+            if (all === true || this._shownLyrNames.includes(lyr.name)) {
                 z = lyr.setZIndex(z);
             }
         });
@@ -172,7 +171,7 @@ class LyrGroup {
         let zIndex = this._minZIndex;
         if (this.isShown()) {
             this._lyrs.forEach((lyr) => {
-                if (this._shownLyrNames.indexOf(lyr.name) < 0) {
+                if (!this._shownLyrNames.includes(lyr.name)) {
                     lyr.hide();
                 } else {
                     if (zIndex > this._maxZIndex) zIndex = this._maxZIndex;
@@ -364,7 +363,7 @@ class LeafletLayerManager {
 
     _isBaseLyr(lyr) {
         // 引数で指定されたnameのレイヤーがベースレイヤーか判定
-        return this._baseLyrs.indexOf(lyr) > -1;
+        return this._baseLyrs.includes(lyr);
     }
 
     _sort(sortRule, deeply = false) {
@@ -425,7 +424,7 @@ class LeafletLayerManager {
         }
 
         this._lyrs.forEach((lyr) => {
-            if (this._shownLyrNames.indexOf(lyr.name) < 0) {
+            if (!this._shownLyrNames.includes(lyr.name)) {
                 lyr.hide();
                 this._removeAttribution(lyr);
             } else {
@@ -503,7 +502,7 @@ class LeafletLayerManager {
         // Lyrを表示する
         const lyr = this.findByName(name);
 
-        if (lyr && this._shownLyrNames.indexOf(name) < 0) {
+        if (lyr && !this._shownLyrNames.includes(name)) {
             add(name, this._shownLyrNames, showIndex);
             this._update();
         }
