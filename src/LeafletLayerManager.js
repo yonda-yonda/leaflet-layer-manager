@@ -2,6 +2,8 @@ import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 import extend from 'jquery-extend';
 
+const VERSION = '0.0.1';
+
 const defaultOptions = {
     defaultOpacity: 1,
     defaultSortRule: function (a, b) {
@@ -313,11 +315,11 @@ class LyrGroup {
 
 class LeafletLayerManager {
     static create(map, params) {
-        const baseLyrs = params.hasOwnProperty('baseLyrs') ? params.baseLyrs : [];
-        const lyrs = params.hasOwnProperty('lyrs') ? params.lyrs : [];
-        const managerOptions = params.hasOwnProperty('managerOptions') ? params.managerOptions : {};
-        const showLyrNames = params.hasOwnProperty('showLyrNames') ? params.showLyrNames : [];
-        const selectedBaseLyrName = params.hasOwnProperty('selectedBaseLyrName') ? params.selectedBaseLyrName : '';
+        const baseLyrs = typeof params !== 'undefined' && typeof params.baseLyrs !== 'undefined' ? params.baseLyrs : [];
+        const lyrs = typeof params !== 'undefined' && typeof params.lyrs !== 'undefined' ? params.lyrs : [];
+        const managerOptions = typeof params !== 'undefined' && typeof params.managerOptions !== 'undefined' ? params.managerOptions : {};
+        const showLyrNames = typeof params !== 'undefined' && typeof params.baseLyrs !== 'showLyrNames' ? params.showLyrNames : [];
+        const selectedBaseLyrName = typeof params !== 'undefined' && typeof params.selectedBaseLyrName !== 'undefined' ? params.selectedBaseLyrName : '';
 
         const m = new LeafletLayerManager(map, managerOptions);
 
@@ -353,6 +355,7 @@ class LeafletLayerManager {
         this._shownLyrNames = [];
         this._lastZIndex = 0;
         this._defaultSortRule = this.defaultSortRule;
+        this.ver = VERSION;
         return this;
     }
 
