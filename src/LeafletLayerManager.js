@@ -319,7 +319,7 @@ class LeafletLayerManager {
         const baseLyrs = typeof params !== 'undefined' && typeof params.baseLyrs !== 'undefined' ? params.baseLyrs : [];
         const lyrs = typeof params !== 'undefined' && typeof params.lyrs !== 'undefined' ? params.lyrs : [];
         const managerOptions = typeof params !== 'undefined' && typeof params.managerOptions !== 'undefined' ? params.managerOptions : {};
-        const showLyrNames = typeof params !== 'undefined' && typeof params.baseLyrs !== 'showLyrNames' ? params.showLyrNames : [];
+        const showLyrNames = typeof params !== 'undefined' && typeof params.showLyrNames !== 'undefined' ? params.showLyrNames : [];
         const selectedBaseLyrName = typeof params !== 'undefined' && typeof params.selectedBaseLyrName !== 'undefined' ? params.selectedBaseLyrName : '';
 
         const m = new LeafletLayerManager(map, managerOptions);
@@ -501,7 +501,6 @@ class LeafletLayerManager {
             this.showLyr(lyr.name, showIndex)
         }
     }
-
 
     showLyr(name, showIndex) {
         // Lyrを表示する
