@@ -10,7 +10,8 @@ const defaultOptions = {
         if (a.name < b.name) return -1;
         if (a.name > b.name) return 1;
         return 0;
-    }
+    },
+    baseZIndex: 0
 }
 
 const adjustIndex = (index, list) => {
@@ -353,7 +354,8 @@ class LeafletLayerManager {
         this._lyrs = [];
         this._selectedBaseLyrName = '';
         this._shownLyrNames = [];
-        this._lastZIndex = 0;
+        this._baseZIndex = this.options.baseZIndex;
+        this._lastZIndex = this.options.baseZIndex;
         this._defaultSortRule = this.defaultSortRule;
         this.ver = VERSION;
         return this;
@@ -409,7 +411,7 @@ class LeafletLayerManager {
 
     _update() {
         // 表示を更新、地図に追加されていないレイヤーは追加する
-        this._lastZIndex = 0;
+        this._lastZIndex = this._baseZIndex;
         this._baseLyrs.forEach((lyr) => {
             if (lyr.name !== this._selectedBaseLyrName) {
                 lyr.hide();
