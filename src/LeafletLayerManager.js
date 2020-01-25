@@ -243,11 +243,9 @@ class LyrGroup {
         // また表示順を指定できる、未指定の場合は末尾（最上）に追加される
         const lyr = this.findByName(name);
 
-        if (lyr) {
-            if (this.getShownLyrIndexByName(name) < 0) {
-                add(name, this._shownLyrNames, adjustIndex(showIndex, this._shownLyrNames));
-                this._update();
-            }
+        if (lyr && !this._shownLyrNames.includes(name)) {
+            add(name, this._shownLyrNames, adjustIndex(showIndex, this._shownLyrNames));
+            this._update();
         }
     }
 
