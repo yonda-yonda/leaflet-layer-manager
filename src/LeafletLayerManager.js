@@ -228,23 +228,28 @@ class LyrGroup {
         }
     }
 
-    addLyr(lyr, show = true, showIndex = undefined) {
+    addLyr(lyr, show = true, index = undefined) {
         // レイヤーをグループに加える
         // showフラグが立っているときは追加と同時に表示する、また表示順を指定できる
-        add(lyr, this._lyrs);
+        add(lyr, this._lyrs, index);
         lyr.setOpacity(this._opacity);
         if (show === true) {
-            this.showLyr(lyr.name, showIndex)
+            this.showLyr(lyr.name)
         }
     }
 
-    showLyr(name, showIndex) {
+    showLyr(name, toFront = false) {
         // レイヤーを表示する
-        // また表示順を指定できる、未指定の場合は末尾（最上）に追加される
+        // また最前面に移動することができる
         const lyr = this.findByName(name);
 
         if (lyr && !this._shownLyrNames.includes(name)) {
-            add(name, this._shownLyrNames, adjustIndex(showIndex, this._shownLyrNames));
+            add(name, this._shownLyrNames);
+            if (toFront === true) {
+                const before = this.getIndexByName(name);
+                const after = this._lyrs.length;
+                this.move(before, after)
+            }
             this._update();
         }
     }
@@ -297,18 +302,30 @@ class LyrGroup {
         }
     }
 
+    getIndexByName(name) {
+        for (let i = 0; i < this._lyrs.length; i++) {
+            if (this._lyrs[i].name === name) return i;
+        }
+        return -1;
+    }
+
+    getIndexByLayer(layer) {
+        for (let i = 0; i < this._lyrs.length; i++) {
+            if (this._lyrs[i].layer === layer) return i;
+        }
+        return -1;
+    }
+
     findByName(name) {
         // 名前で検索し子要素のレイヤーを返す
-        for (let i = 0; i < this._lyrs.length; i++) {
-            if (this._lyrs[i].name === name) return this._lyrs[i];
-        }
+        const index = this.getIndexByName(name);
+        if (index >= 0) return this._lyrs[index];
     }
 
     findByLayer(layer) {
         // オブジェクトで検索し子要素のレイヤーを返す
-        for (let i = 0; i < this._lyrs.length; i++) {
-            if (this._lyrs[i].layer === layer) return this._lyrs[i];
-        }
+        const index = this.getIndexByName(layer);
+        if (index >= 0) return this._lyrs[index];
     }
 }
 
@@ -453,24 +470,39 @@ class LeafletLayerManager {
         }
     }
 
-    findByName(name) {
-        // 引数で指定されたnameのLyrを返す。
+    getIndexByName(name) {
         const lyrs = this._getLyrs();
         for (let i = 0; i < lyrs.length; i++) {
             if (lyrs[i].name === name) {
-                return lyrs[i]
+                return i
             }
         }
+        return -1;
+    }
+
+    getIndexByLayer(layer) {
+        const lyrs = this._getLyrs();
+        for (let i = 0; i < lyrs.length; i++) {
+            if (lyrs[i].layer === layer) {
+                return i
+            }
+        }
+        return -1;
+    }
+
+    findByName(name) {
+        // 引数で指定されたnameのLyrを返す。
+        const index = this.getIndexByName(name);
+        const lyrs = this._getLyrs();
+        if (index >= 0) return lyrs[index];
     }
 
     findByLayer(layer) {
         // 引数で指定されたlayerのLyrを返す。
+        // 引数で指定されたnameのLyrを返す。
+        const index = this.getIndexByLayer(layer);
         const lyrs = this._getLyrs();
-        for (let i = 0; i < lyrs.length; i++) {
-            if (lyrs[i].layer === layer) {
-                return lyrs[i]
-            }
-        }
+        if (index >= 0) return lyrs[index];
     }
 
     addBaseLyr(lyr, selected = true) {
@@ -491,21 +523,26 @@ class LeafletLayerManager {
         }
     }
 
-    addLyr(lyr, show = true, showIndex = undefined) {
+    addLyr(lyr, show = true, index = undefined) {
         // Lyrを追加
-        add(lyr, this._lyrs);
+        add(lyr, this._lyrs, index);
         lyr.setOpacity(this.options.defaultOpacity);
         if (show === true) {
-            this.showLyr(lyr.name, showIndex)
+            this.showLyr(lyr.name)
         }
     }
 
-    showLyr(name, showIndex) {
+    showLyr(name, toFront = false) {
         // Lyrを表示する
         const lyr = this.findByName(name);
 
         if (lyr && !this._shownLyrNames.includes(name)) {
-            add(name, this._shownLyrNames, showIndex);
+            add(name, this._shownLyrNames);
+            if (toFront === true) {
+                const before = this.getIndexByName(name);
+                const after = this._lyrs.length;
+                this.move(before, after)
+            }
             this._update();
         }
     }
