@@ -60,7 +60,7 @@ class Lyr {
     setOpacity(opacity) {
         // opacityの値を保持し、表示状態の場合opacityを変更
         this._opacity = opacity;
-        if (!this._hidden) {
+        if (!this._hidden && typeof this.layer.setOpacity === 'function') {
             this.layer.setOpacity(this._opacity);
         }
     }
@@ -91,13 +91,17 @@ class Lyr {
     show() {
         // 表示状態に変更し、opacityを保持していた値に設定
         this._hidden = false;
-        this.layer.setOpacity(this._opacity);
+        if (typeof this.layer.setOpacity === 'function') {
+            this.layer.setOpacity(this._opacity);
+        }
     }
 
     hide() {
         // 非表示状態に変更し、opacityを0に設定
         this._hidden = true;
-        this.layer.setOpacity(0);
+        if (typeof this.layer.setOpacity === 'function') {
+            this.layer.setOpacity(0);
+        }
     }
 
     addToMap(map) {
