@@ -76,8 +76,16 @@ class Lyr {
         // 数字が大きいほど上に重なる。
         // zIndexを設定してもLeafletの各グループ内の重なり順しか制御することはできない。
         // https://github.com/Leaflet/Leaflet/blob/3b9fe956e2d972b4f60ec1476e3f574d8ce549c3/src/map/Map.js#L1136
-        this.layer.setZIndex(zIndex);
-        return zIndex + 1
+        if (typeof this.layer.setZIndex === 'function') {
+            // GridLayer, ImageOverlay, LayerGroup, 
+            this.layer.setZIndex(zIndex);
+            return zIndex + 1
+        } else if (typeof this.layer.setZIndexOffset === 'function') {
+            // Marker
+            this.layer.setZIndexOffset(zIndex);
+            return zIndex + 1
+        }
+        return zIndex
     }
 
     show() {
