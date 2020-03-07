@@ -10,12 +10,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
-        #layers,
-        #add,
-        #sort {
-            display: block;
+        .mt40 {
+            margin-top: 40px;
+        }
+
+        .mt20 {
             margin-top: 20px;
-            margin-bottom: 20px;
+        }
+
+        .mt10 {
+            margin-top: 10px;
         }
 
         #map {
@@ -37,6 +41,7 @@
         .controllers {
             display: table-cell;
             vertical-align: top;
+            padding-left: 20px;
         }
 
         .order-item {
@@ -45,6 +50,14 @@
             padding: 5px;
             background-color: ghostwhite;
             cursor: grab;
+        }
+
+        .leaflet-basemap-pane {
+            z-index: 100;
+        }
+
+        .leaflet-custom-pane {
+            z-index: 150;
         }
     </style>
 </head>
@@ -56,262 +69,387 @@
         </div>
         <div class="controllers">
             <form>
-                <div id="baseLayers"></div>
-                <div id="layers"></div>
-            </form>
-            <button id="add" type="button">add</button>
+                <dl>
+                    <dt>
+                        ベースマップ
+                    </dt>
+                    <dd class="mt10" id="baseLayers">
 
-            <div id="sort">
-                <button id="sort_index" type="button">sort by index</button>
-                <button id="sort_name" type="button">sort by name</button>
-            </div>
-            <div>
-                <div>重なり順</div>
-                <div id="order"></div>
-            </div>
+                    </dd>
+                </dl>
+                <dl class="mt40">
+                    <dt>
+                        カスタムレイヤー（ラスター）
+                    </dt>
+                    <dd class="mt10">
+                        <div id="layers"></div>
+                        <div class="mt20">
+                            <button id="add" type="button">add</button>
+                        </div>
+                        <div class="mt10">
+                            <button id="sort_name" type="button">sort 1-4.png by name</button>
+                        </div>
+                        <div class="mt10">
+                            <button id="sort_props" type="button">sort 1-4.png by props</button>
+                        </div>
+                        <div class="mt20">
+                            <div>重なり順</div>
+                            <div id="order"></div>
+                        </div>
+                    </dd>
+                </dl>
+
+                <dl class="mt40">
+                    <dt>カスタムレイヤー（ベクター）
+                    </dt>
+                    <dd class="mt10" id="vectors">
+                    </dd>
+                </dl>
+
+                <dl class="mt40">
+                    <dt>
+                        オーバーレイ
+                    </dt>
+                    <dd class="mt10" id="overlays">
+
+                    </dd>
+                </dl>
+            </form>
         </div>
     </div>
 </body>
 <script>
     var map = L.map("map").setView([35.681236, 139.767125], 10);
 
-    var baseLayers = [{
-        name: "標準地図",
-        layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
-            attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
-        })
-    }, {
-        name: "OpenStratMap",
-        layer: L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-        })
-    }];
 
-
-    var layers = [{
-            name: "test4",
-            layer: L.imageOverlay('6.png', L.latLngBounds(
-                [35.71083783530008, 139.7021484375],
-                [35.63944106897394, 139.7900390625]
-            )),
-            params: {
-                index: 1
-            }
+    var baseLayers = {
+        "default": {
+            name: "標準地図",
+            layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
+                attribution: "<a href='http: //maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
+            })
         },
-        {
-            name: "test3",
+        "osm": {
+            name: "OpenStratMap",
+            layer: L.tileLayer("http://{s}.tile.osm.org/{z}/{x}/{y}.png", {
+                attribution: "&copy; <a href='http: //osm.org/copyright'>OpenStreetMap</a> contributors"
+            })
+        },
+        "photo": {
+            name: "航空写真",
+            layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", {
+                attribution: "<a href='http: //maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
+            })
+        }
+    };
+
+    var layers = {
+        "elevation": {
+            name: "色別標高図",
+            layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/relief/{z}/{x}/{y}.png", {
+                attribution: "<a href='http: //maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
+            })
+        },
+        "images1to3": {
+            name: "image1-4",
             layer: [{
-                    name: "test3_3",
-                    layer: L.imageOverlay('1.png', L.latLngBounds(
-                        [35.67514743608467, 139.74609375],
-                        [35.6037187406973, 139.833984375]
-                    )),
-                    params: {
-                        index: 1
-                    }
-                }, {
-                    name: "test3_2",
-                    layer: L.imageOverlay('2.png', L.latLngBounds(
-                        [35.67514743608467, 139.7900390625],
-                        [35.6037187406973, 139.8779296875]
-                    )),
-                    params: {
-                        index: 2
-                    }
-                },
-                {
-                    name: "test3_1",
-                    layer: L.imageOverlay('3.png', L.latLngBounds(
+                name: "image3-4",
+                layer: [{
+                    name: 'image4',
+                    layer: L.imageOverlay("4.png", L.latLngBounds(
                         [35.63944106897394, 139.7900390625],
                         [35.56798045801208, 139.8779296875]
-                    )),
-                    params: {
-                        index: 3
-                    }
+                    ))
+                }, {
+                    name: 'image3',
+                    layer: L.imageOverlay("3.png", L.latLngBounds(
+                        [35.63944106897394, 139.74609375],
+                        [35.56798045801208, 139.833984375]
+                    ))
+                }],
+                props: {
+                    date: new Date(2020, 1, 1)
                 }
-            ],
-            params: {
-                index: 2
-            }
+            }, {
+                name: "image2",
+                layer: L.imageOverlay("2.png", L.latLngBounds(
+                    [35.67514743608467, 139.7900390625],
+                    [35.6037187406973, 139.8779296875]
+                )),
+                props: {
+                    date: new Date(2000, 1, 1)
+                }
+            }, {
+                name: "image1",
+                layer: L.imageOverlay("1.png", L.latLngBounds(
+                    [35.67514743608467, 139.74609375],
+                    [35.6037187406973, 139.833984375]
+                )),
+                props: {
+                    date: new Date(2010, 1, 1)
+                }
+            }]
         },
-        {
-            name: "test2",
-            layer: L.imageOverlay('4.png', L.latLngBounds(
-                [35.67514743608467, 139.833984375],
-                [35.6037187406973, 139.921875]
-            )),
-            params: {
-                index: 3
-            }
-        }, {
-            name: "test1",
-            layer: L.imageOverlay('5.png', L.latLngBounds(
+        "images5to6": {
+            name: "image5-6",
+            layer: L.layerGroup([L.imageOverlay("5.png", L.latLngBounds(
                 [35.6037187406973, 139.74609375],
                 [35.532226227703376, 139.833984375]
-            )),
-            params: {
-                index: 4
-            }
-        }, {
-            name: "色別標高図(tileLayer)",
-            layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/relief/{z}/{x}/{y}.png", {
-                attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
-            }),
-            params: {
-                index: 1001
-            }
-        }, {
-            name: "航空写真(tileLayer)",
-            layer: L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg", {
-                attribution: "<a href='http://maps.gsi.go.jp/development/ichiran.html'>地理院タイル</a>"
-            }),
-            params: {
-                index: 1000
-            }
+            )), L.imageOverlay("6.png", L.latLngBounds(
+                [35.5679724842, 139.74609375],
+                [35.532226227703376, 139.790039063]
+            ))])
         }
-    ];
+    };
 
-    var baseLyrs = [];
-    for (var i = 0; i < baseLayers.length; i++) {
-        baseLyrs.push(LeafletLayerManager.createLyr(baseLayers[i].name, baseLayers[i].layer,
-            baseLayers[i].params));
-    }
-    var selectedBaseLyrName = baseLyrs[baseLyrs.length - 1].name;
-    var lyrs = [];
-    var showLyrNames = [];
-    for (var i = 0; i < layers.length; i++) {
-        lyrs.push(LeafletLayerManager.createLyr(layers[i].name,
-            layers[i].layer, layers[i].params));
-        if (layers[i].name.startsWith('test')) {
-            showLyrNames.push(layers[i].name);
+    var overlays = {
+        "image8": {
+            name: "image8",
+            layer: L.imageOverlay("8.png", L.latLngBounds(
+                [35.71083783530008, 139.7021484375],
+                [35.6751394521, 139.74609375]
+            ))
         }
-    }
+    };
 
-
-    var m = LeafletLayerManager.create(map, {
-        "baseLyrs": baseLyrs,
-        "lyrs": lyrs,
-        "showLyrNames": showLyrNames,
-        "selectedBaseLyrName": selectedBaseLyrName,
-        "managerOptions": {
-            "baseZIndex": 10
+    var vectors = {
+        "vector1": {
+            name: "line1",
+            layer: L.geoJSON({
+                "type": "LineString",
+                "coordinates": [
+                    [139.7021484375, 35.71083783530008],
+                    [139.7900390625, 35.63944106897394]
+                ]
+            }, {
+                style: {
+                    "color": "#ff7800",
+                    "weight": 5,
+                    "opacity": 0.65
+                }
+            })
+        },
+        "vector2": {
+            name: "circle1",
+            layer: L.circle([35.71083783530008, 139.7021484375], {
+                radius: 5000,
+                fillColor: "red",
+                fillOpacity: 1,
+                color: "transpalent",
+                opacity: 0
+            })
         }
-    });
-
-
-    function baseLayerController(name) {
-        var baseLayerParent = document.getElementById("baseLayers");
-        var div = document.createElement("div");
-        var label = document.createElement("label");
-        var input = document.createElement("input");
-        input.value = name;
-        input.name = "base";
-        input.type = "radio";
-        label.appendChild(input);
-        label.innerHTML = label.innerHTML + name;
-        div.appendChild(label);
-        baseLayerParent.appendChild(div);
-
-        var baseLayerInput = document.querySelector('input[name=base][value="' + name + '"]');
-        baseLayerInput.checked = true
-        baseLayerInput.addEventListener("click", function (e) {
-            var input = document.querySelector("[name=base]:checked");
-            m.selectBaseLyr(input.value);
-        });
-
     }
 
-    function layerController(name, show) {
-        var layersParent = document.getElementById("layers");
+
+    function radioLayerController(layers, manager, controllerId) {
+        var ids = Object.keys(layers);
+        for (var i = 0; i < ids.length; i++) {
+            var id = ids[i];
+            var name = baseLayers[id].name;
+            var parent = document.getElementById(controllerId);
+            var div = document.createElement("div");
+            var label = document.createElement("label");
+            var input = document.createElement("input");
+            input.value = id;
+            input.name = controllerId;
+            input.type = "radio";
+            input.setAttribute("checked", "checked");
+
+            input.addEventListener("change", function (e) {
+                var checkdInput = document.querySelector("[name=" + controllerId + "]:checked");
+                manager.setLayers([layers[checkdInput.value]]);
+            });
+
+            div.appendChild(input);
+            label.innerHTML = name;
+            input.setAttribute("id", id);
+            label.setAttribute("for", id);
+            div.appendChild(label);
+            parent.appendChild(div);
+        }
+    }
+
+
+    function setCheckbox(id, lyr, manager, controllerId) {
+        var name = lyr.name;
+        var parent = document.getElementById(controllerId);
         var div = document.createElement("div");
         var label = document.createElement("label");
         var input = document.createElement("input");
         var range = document.createElement("input");
-        input.value = name;
-        input.name = "layers";
+        input.value = id;
+        input.name = controllerId;
         input.type = "checkbox";
-        label.innerHTML = label.innerHTML + name;
+        label.innerHTML = name;
+        input.setAttribute("id", id);
+        label.setAttribute("for", id);
         range.value = 100;
-        range.dataset.layer = name;
+        range.dataset.layer = id;
         range.type = "range";
 
-        if (show) {
-            input.checked = true;
-        }
-        input.addEventListener("click", function (e) {
-            var input = e.target;
+        input.addEventListener("change", function (e) {
             if (input.checked) {
-                m.showLyr(input.value)
+                manager.add(lyr);
+                manager.setOpacity(name, parseInt(range.value, 10) / 100);
             } else {
-                m.hideLyr(input.value)
+                manager.remove(name);
             }
         });
+
         range.addEventListener("change", function (e) {
-            m.setOpacity(e.target.dataset.layer, parseInt(e.target.value, 10) / 100);
+            manager.setOpacity(name, parseInt(range.value, 10) / 100);
         });
 
         range.addEventListener("click", function (e) {
             e.preventDefault();
         });
 
-        label.appendChild(input);
+        div.appendChild(input);
         div.appendChild(label);
         div.appendChild(document.createElement("br"));
         div.appendChild(range);
-        layersParent.appendChild(div);
-
-        var orderParent = document.getElementById("order");
-        var order = document.createElement("div");
-        order.innerHTML = name;
-        order.className = "order-item";
-        orderParent.appendChild(order);
+        parent.appendChild(div);
     }
 
-    for (var i = 0; i < baseLayers.length; i++) {
-        baseLayerController(baseLayers[i].name)
-    }
+    function checkboxLayerController(layers, manager, controllerId) {
+        var ids = Object.keys(layers);
 
-    for (var i = 0; i < layers.length; i++) {
-        layerController(layers[i].name, showLyrNames.indexOf(layers[i].name) > -1)
-    }
-
-    document.getElementById("sort_index").addEventListener("click", function (e) {
-        m.sort(function (a, b) {
-            return a.params.index - b.params.index;
-        }, true)
-    });
-    document.getElementById("sort_name").addEventListener("click", function (e) {
-        m.sort(undefined, true)
-    });
-
-    var newLayer = {
-        name: "test5",
-        layer: L.imageOverlay('6.png', L.latLngBounds(
-            [35.7465122599185, 139.658203125],
-            [35.6037187406973, 139.833984375]
-        )),
-        params: {
-            index: 0
+        for (var i = 0; i < ids.length; i++) {
+            var id = ids[i];
+            setCheckbox(id, layers[id], manager, controllerId);
         }
     }
-    var addedNewLayer = false;
+
+    function setOrderElement(id, name, manager, orderListId, sortable) {
+        var input = document.getElementById(id);
+
+        function reset() {
+            if (sortable) sortable.destroy();
+            sortable = Sortable.create(document.getElementById(orderListId), {
+                onEnd: function (evt) {
+                    manager.move(evt.oldIndex, evt.newIndex);
+                }
+            });
+        }
+
+        input.addEventListener("change", function (e) {
+            if (input.checked) {
+                var parent = document.getElementById(orderListId);
+                var order = document.createElement("div");
+                order.setAttribute("id", id + "_order");
+                order.innerHTML = name;
+                order.className = "order-item";
+                parent.appendChild(order);
+                reset();
+            } else {
+                var elem = document.getElementById(id + "_order");
+                elem.parentNode.removeChild(elem);
+                reset();
+            }
+        });
+    }
+
+    var baselayerManager = LeafletLayerManager.raster(map, "basemapPane");
+    var baseLayerIds = Object.keys(baseLayers);
+    radioLayerController(baseLayers, baselayerManager, "baseLayers");
+    baselayerManager.setLayers([baseLayers[baseLayerIds[baseLayerIds.length - 1]]]);
+
+    var customRastersManager = LeafletLayerManager.raster(map, "custom");
+    checkboxLayerController(layers, customRastersManager, "layers");
+
+    var sortable;
+    var ids = Object.keys(layers);
+    for (var i = 0; i < ids.length; i++) {
+        var id = ids[i];
+        setOrderElement(id, layers[id].name, customRastersManager, "order", sortable);
+    }
+
     document.getElementById("add").addEventListener("click", function (e) {
-        if (!addedNewLayer) {
-            e.target.disabled = true;
-            m.addLyr(LeafletLayerManager.createLyr(newLayer.name, newLayer.layer,
-                newLayer.params));
-            addedNewLayer = true;
-
-            layerController(newLayer.name, true);
+        var id = "image7";
+        var lyr = {
+            name: "image7",
+            layer: L.imageOverlay("7.png", L.latLngBounds(
+                [35.71083783530008, 139.7021484375],
+                [35.63944106897394, 139.7900390625]
+            ))
         }
-    });
+        setCheckbox(id, lyr, customRastersManager, "layers");
+        setOrderElement(id, lyr.name, customRastersManager, "order", sortable);
+
+        var elem = e.target;
+        elem.parentNode.removeChild(elem);
+    })
+
+    var customVectorsManager = LeafletLayerManager.vector(map, "custom");
+    checkboxLayerController(vectors, customVectorsManager, "vectors");
+
+    var overlayManager = LeafletLayerManager.raster(map);
+    checkboxLayerController(overlays, overlayManager, "overlays");
 
 
-    Sortable.create(document.getElementById("order"), {
-        onEnd: function (evt) {
-            m.move(evt.oldIndex, evt.newIndex);
+    var sortNameDesc = true;
+    document.getElementById("sort_name").addEventListener("click", function (e) {
+        if (sortNameDesc) {
+            customRastersManager.sort(function (a, b) {
+                if (a.name < b.name) {
+                    return -1;
+                }
+                if (a.name > b.name) {
+                    return 1;
+                }
+                return 0;
+            }, {
+                parentName: "image1-4"
+            })
+            sortNameDesc = false
+        } else {
+            customRastersManager.sort(function (a, b) {
+                if (a.name > b.name) {
+                    return -1;
+                }
+                if (a.name < b.name) {
+                    return 1;
+                }
+                return 0;
+            }, {
+                parentName: "image1-4"
+            })
+            sortNameDesc = true
         }
-    });
+    })
+
+
+    var sortDateDesc = true;
+    document.getElementById("sort_props").addEventListener("click", function (e) {
+        if (sortDateDesc) {
+            customRastersManager.sort(function (a, b) {
+                if (a.props.date < b.props.date) {
+                    return -1;
+                }
+                if (a.props.date > b.props.date) {
+                    return 1;
+                }
+                return 0;
+            }, {
+                parentName: "image1-4"
+            })
+            sortDateDesc = false
+        } else {
+            customRastersManager.sort(function (a, b) {
+                if (a.props.date > b.props.date) {
+                    return -1;
+                }
+                if (a.props.date < b.props.date) {
+                    return 1;
+                }
+                return 0;
+            }, {
+                parentName: "image1-4"
+            })
+            sortDateDesc = true
+        }
+    })
 </script>
 
 </html>

@@ -1,619 +1,634 @@
-import 'core-js/stable';
-import 'regenerator-runtime/runtime';
 import extend from 'jquery-extend';
 
-const VERSION = '0.0.1';
+const VERSION = '0.0.5';
 
-const defaultOptions = {
-    defaultOpacity: 1,
-    defaultSortRule: function (a, b) {
-        if (a.name < b.name) return -1;
-        if (a.name > b.name) return 1;
-        return 0;
-    },
-    baseZIndex: 0
+const nameChain = (name) => {
+    /**
+     * @param {string} name - layerのname(chained)
+     * @return {string[]} nameの配列
+     */
+    const separator = '.'
+    return name.split(separator);
 }
 
-const adjustIndex = (index, list) => {
-    if (typeof index !== 'number' || index > list.length) {
+const adjustIndex = (list, index) => {
+    /**
+     * @param {number} index - 添字
+     * @param {*[]} list - 配列
+     * @return {number} 配列の範囲に収まった添字、範囲外の場合list.length(末尾)
+     */
+    if (typeof index !== 'number' || index > list.length || index < 0) {
         index = list.length;
-    } else if (index < 0) {
-        index = 0;
     }
     return index
 }
 
-const add = (target, list, index = undefined) => {
-    list.splice(adjustIndex(index, list), 0, target);
+const addList = (target, list, index = undefined) => {
+    /**
+     * 配列に対象を加える(破壊的)
+     * @param {*} target - 対象
+     * @param {*[]} list - 配列
+     * @param {number} index - 添字 範囲外または未指定の場合末尾に加えられる
+     */
+    index = adjustIndex(list, index);
+    list.splice(index, 0, target);
 }
 
-const remove = (target, list) => {
-    if (list.includes(target)) list.splice(list.indexOf(target), 1);
+const removeList = (target, list) => {
+    /**
+     * 対象が配列に含まれていた場合削除する(破壊的)
+     * @param {number} target - 対象
+     * @param {*[]} list - 配列
+     */
+    if (list.includes(target))
+        return list.splice(list.indexOf(target), 1);
 }
 
-class Lyr {
-    constructor(name, layer, params = {}) {
+class LyrObj {
+    constructor(name, layer, props = {}) {
+        if (typeof name !== 'string' || name.length === 0) {
+            throw new Error('The provided name must be string (at least one character).');
+        }
+        if (name.includes('.')) {
+            throw new Error('The provided name must not contain ".", it is a separator.');
+        }
+
         this.name = name;
         this.layer = layer;
-        this.params = params;
-
-        this._opacity = 1;
-        this._hidden = true;
-        this._map = null;
+        this.props = props;
     }
 
-    isShown() {
-        // 表示状態にあるかのチェック
-        return this._hidden === false;
-    }
-
-    isAdded() {
-        // 地図に追加済みかのチェック
-        return this._map !== null;
-    }
-
-    getLayerId() {
-        // レイヤーのidを取得
-        return this.layer._leaflet_id
-    }
-
-    setOpacity(opacity) {
-        // opacityの値を保持し、表示状態の場合opacityを変更
-        this._opacity = opacity;
-        if (!this._hidden && typeof this.layer.setOpacity === 'function') {
-            this.layer.setOpacity(this._opacity);
+    _setPane(map, pane) {
+        const overwritePane = (map, layer, pane) => {
+            /**
+             * paneを上書きする。子要素も全て
+             * @param {LayerManager|L.Layer} layer - 対象
+             * @param {string} pane - paneName
+             */
+            if (layer.options && layer.options.pane !== pane) {
+                layer.options.pane = pane;
+                layer.removeFrom(map)
+            }
+            if (typeof layer._layers !== 'undefined') {
+                Object.keys(layer._layers).forEach((key) => {
+                    overwritePane(map, layer._layers[key], pane);
+                })
+            }
         }
+        overwritePane(map, this.layer, pane);
     }
 
-    setZIndex(zIndex) {
-        // zIndexを設定し、加算して返却
-        // レイヤーは以下のグループがあり、 マネージャーはグループを区別しない。
-        // 1. tilePane(ex: TileLayer)
-        // 2. overlayPane(ex: Layer, ImageOverlay, VideoOverlay, SVG)
-        // 3. markerPane(ex: Marker)
-        // 4. tooltipPane(ex: Tooltip)
-        // 5. popupPane(ex: Popup)
-        // 数字が大きいほど上に重なる。
-        // zIndexを設定してもLeafletの各グループ内の重なり順しか制御することはできない。
-        // https://github.com/Leaflet/Leaflet/blob/3b9fe956e2d972b4f60ec1476e3f574d8ce549c3/src/map/Map.js#L1136
-        if (typeof this.layer.setZIndex === 'function') {
-            // GridLayer, ImageOverlay, LayerGroup, 
-            this.layer.setZIndex(zIndex);
-            return zIndex + 1
-        } else if (typeof this.layer.setZIndexOffset === 'function') {
-            // Marker
-            this.layer.setZIndexOffset(zIndex);
-            return zIndex + 1
-        }
-        return zIndex
+    _addTo(map) {
+        this.layer.addTo(map);
     }
 
-    show() {
-        // 表示状態に変更し、opacityを保持していた値に設定
-        this._hidden = false;
-        if (typeof this.layer.setOpacity === 'function') {
-            this.layer.setOpacity(this._opacity);
-        }
+    _removeFrom(map) {
+        this.layer.removeFrom(map);
     }
 
-    hide() {
-        // 非表示状態に変更し、opacityを0に設定
-        this._hidden = true;
-        if (typeof this.layer.setOpacity === 'function') {
-            this.layer.setOpacity(0);
+    _bringToFront() {
+        /**
+         * https: //github.com/Leaflet/Leaflet/blob/f8e09f993292579a1af88261c9b461730f22e4e6/src/layer/tile/GridLayer.js#L285
+         * tile系は同パネル内のlayerのうち、styleで直接指定されているzIndexの最大値を取得し+1することでbringToFrontを実現する。
+         * svg or canvasはデフォルトではcssによりzIndexが指定されている(200など)ため、この動作に影響しない。
+         */
+        const invoke = (layer) => {
+            if (typeof layer.bringToFront !== 'undefined') {
+                layer.bringToFront();
+            } else if (typeof layer._layers !== 'undefined') {
+                Object.keys(layer._layers).forEach((key) => {
+                    invoke(layer._layers[key]);
+                })
+            };
         }
+        invoke(this.layer);
     }
 
-    addToMap(map) {
-        // 地図に追加
-        if (map && !this.isAdded()) {
-            this.layer.addTo(map);
-            this._map = map;
+    _setStyle(style) {
+        const invoke = (layer, style) => {
+            if (typeof layer.setStyle !== 'undefined') {
+                layer.setStyle(style);
+            } else if (typeof layer._layers !== 'undefined') {
+                Object.keys(layer._layers).forEach((key) => {
+                    invoke(layer._layers[key], style);
+                })
+            };
         }
+        invoke(this.layer, style);
     }
 
-    removeFromMap() {
-        // 地図から削除
-        if (this.isAdded()) {
-            this.layer.removeLayer(this._map);
-            this._map = null;
+    _setOpacity(opacity) {
+        const invoke = (layer, opacity) => {
+            if (typeof layer.setOpacity !== 'undefined') {
+                layer.setOpacity(opacity);
+            } else if ('_layers' in layer) {
+                Object.keys(layer._layers).forEach((key) => {
+                    invoke(layer._layers[key], opacity);
+                })
+            };
         }
+        invoke(this.layer, opacity);
+    }
+
+    _setZIndex(zIndex) {
+        const invoke = (layer, zIndex) => {
+            if (typeof layer.setZIndex !== 'undefined') {
+                layer.setZIndex(zIndex);
+            } else if ('_layers' in layer) {
+                Object.keys(layer._layers).forEach((key) => {
+                    invoke(layer._layers[key], zIndex);
+                })
+            };
+        }
+        invoke(this.layer, zIndex);
+        return ++zIndex;
     }
 }
 
-class LyrGroup {
-    constructor(name, lyrs = [], params = {}) {
+class GrpObj {
+    constructor(name, lyrs, props = {}) {
+        if (typeof name !== 'string' || name.length === 0) {
+            throw new Error('The provided name must be String (at least one character).');
+        }
+        if (name.includes('.')) {
+            throw new Error('The provided name must not contain ".", it is a separator.');
+        }
+        if (Array.isArray(lyrs) && !lyrs.every((lyr) => {
+                return (lyr instanceof GrpObj) || (lyr instanceof LyrObj)
+            })) {
+            throw new Error('The provided array must be Array of LyrObj or GrpObj.');
+        }
+
         this.name = name;
-        this._lyrs = lyrs; //表示順
-        this.params = params;
-        this._shownLyrNames = lyrs.map((lyr) => {
-            return lyr.name;
-        }); // 表示状態を保持
-        this._opacity = 1;
-        this._hidden = true;
-        this._map = null;
-        this._minZIndex = 0;
-        this._maxZIndex = 0;
-    }
-
-    setOpacity(opacity) {
-        // opacityの値を保持し、表示状態の場合全レイヤーのopacityを変更
-        this._opacity = opacity;
-        if (!this._hidden) {
-            this._lyrs.forEach((lyr) => {
-                lyr.setOpacity(opacity);
-            })
-        }
-    }
-
-    setZIndex(zIndex, all = false) {
-        // 表示順通りに重なり順を更新する、レイヤー数分加算したzIndexを返却する
-        this._minZIndex = zIndex;
-        this._maxZIndex = zIndex + this._shownLyrNames.length;
-        let z = zIndex;
-
-        this._lyrs.forEach((lyr) => {
-            if (all === true || this._shownLyrNames.includes(lyr.name)) {
-                z = lyr.setZIndex(z);
-            }
-        });
-        return z;
-    }
-
-    isShown(name) {
-        // 表示状態か判定、引数にnameが指定されている場合、子要素の表示状態を判定
-        if (typeof name === 'string') {
-            const lyr = this.findByName(name);
-            return lyr.isShown();
-        } else {
-            return this._hidden === false;
-        }
-    }
-
-    isAdded(name) {
-        // 地図に追加済みか判定、引数にnameが指定されている場合、子要素が追加済みかを判定
-        if (typeof name === 'string') {
-            const lyr = this.findByName(name);
-            return lyr.isAdded();
-        } else {
-            return this._map !== null;
-        }
-    }
-
-    _update() {
-        // 重なり順と表示を制御
-        // zIndexは事前にsetZIndexで設定したmax値を越えることはできない。
-        let zIndex = this._minZIndex;
-        if (this.isShown()) {
-            this._lyrs.forEach((lyr) => {
-                if (!this._shownLyrNames.includes(lyr.name)) {
-                    lyr.hide();
-                } else {
-                    if (zIndex > this._maxZIndex) zIndex = this._maxZIndex;
-                    lyr.setZIndex(zIndex++);
-
-                    if (!lyr.isAdded()) {
-                        lyr.addToMap(this._map);
-                    }
-                    lyr.show();
-                }
-            });
-        }
-    }
-
-    show() {
-        // グループを表示状態にする
-        // 保存していた子要素の重なり順と表示順を再現する
-        this._hidden = false;
-        this._update();
-    }
-
-    hide() {
-        // グループを非表示状態にする
-        // 子要素をすべて非表示にする
-        this._hidden = true;
-        this._shownLyrNames.forEach((name) => {
-            const lyr = this.findByName(name);
-            lyr.hide();
-        })
-    }
-
-    addToMap(map) {
-        // グループを地図に追加する
-        // 子要素すべてが対象
-        if (map && !this.isAdded()) {
-            this._lyrs.forEach((lyr) => {
-                lyr.addToMap(map);
-            });
-            this._map = map;
-        }
-    }
-
-    removeFromMap() {
-        // グループを地図から削除する
-        // 子要素すべてが対象
-        if (this.isAdded()) {
-            this._lyrs.forEach((lyr) => {
-                lyr.removeFromMap();
-            });
-            this._map = null;
-        }
-    }
-
-    addLyr(lyr, show = true, index = undefined) {
-        // レイヤーをグループに加える
-        // showフラグが立っているときは追加と同時に表示する、また表示順を指定できる
-        add(lyr, this._lyrs, index);
-        lyr.setOpacity(this._opacity);
-        if (show === true) {
-            this.showLyr(lyr.name)
-        }
-    }
-
-    showLyr(name, toFront = false) {
-        // レイヤーを表示する
-        // また最前面に移動することができる
-        const lyr = this.findByName(name);
-
-        if (lyr && !this._shownLyrNames.includes(name)) {
-            add(name, this._shownLyrNames);
-            if (toFront === true) {
-                const before = this.getIndexByName(name);
-                const after = this._lyrs.length;
-                this.move(before, after)
-            }
-            this._update();
-        }
-    }
-
-    hideLyr(name) {
-        // レイヤーを非表示にする(表示リストから削除し更新)
-        const lyr = this.findByName(name);
-        if (lyr) {
-            remove(name, this._shownLyrNames);
-            this._update();
-        }
-    }
-
-    removeLyr(name) {
-        // レイヤーをグループから削除する
-        // 地図からも削除
-        const lyr = this.findByName(name);
-
-        if (lyr) {
-            remove(lyr, this._lyrs);
-            remove(lyr.name, this._shownLyrNames);
-            lyr.removeFromMap();
-        }
-    }
-
-    move(from, to) {
-        // レイヤーの並び順を変更する
-        from = adjustIndex(from, this._lyrs);
-        to = adjustIndex(to, this._lyrs);
-        if (from < this._lyrs.length) {
-            const lyr = this._lyrs.splice(from, 1)[0];
-
-            this._lyrs.splice(to, 0, lyr);
-            this._update();
-        }
-    }
-
-    _sort(sortRule) {
-        // レイヤーをLyrオブジェクトの情報を元に並び替え
-        if (sortRule) {
-            this._lyrs.sort(sortRule);
-        }
-    }
-
-    sort(sortRule = undefined) {
-        // 表示レイヤーの重なり順をソートする
-        if (sortRule) {
-            this._sort(sortRule);
-            this._update();
-        }
+        this._lyrs = lyrs;
+        this.props = props;
     }
 
     getIndexByName(name) {
+        /**
+         * 名前で検索し直下のObjのインデックスを返す
+         */
         for (let i = 0; i < this._lyrs.length; i++) {
             if (this._lyrs[i].name === name) return i;
         }
         return -1;
     }
 
-    getIndexByLayer(layer) {
-        for (let i = 0; i < this._lyrs.length; i++) {
-            if (this._lyrs[i].layer === layer) return i;
-        }
-        return -1;
-    }
-
     findByName(name) {
-        // 名前で検索し子要素のレイヤーを返す
+        /**
+         * 名前で検索し直下のObjを返す
+         */
         const index = this.getIndexByName(name);
         if (index >= 0) return this._lyrs[index];
     }
 
-    findByLayer(layer) {
-        // オブジェクトで検索し子要素のレイヤーを返す
-        const index = this.getIndexByName(layer);
-        if (index >= 0) return this._lyrs[index];
+    hasLayer(name) {
+        /**
+         * nameのObjを直下の要素に持つか判定する
+         * @param {string} name - レイヤー名
+         * @return {boolean} 有無
+         */
+        return this.getIndexByName(name) >= 0
+    }
+
+    _setPane(map, pane) {
+        this._lyrs.forEach((lyr) => {
+            lyr._setPane(map, pane);
+        })
+    }
+
+    _bringToFront(map) {
+        this._lyrs.forEach((lyr) => {
+            lyr._bringToFront(map);
+        })
+    }
+
+    _setStyle(style) {
+        this._lyrs.forEach((lyr) => {
+            lyr._setStyle(style);
+        })
+    }
+
+    _setOpacity(opacity) {
+        this._lyrs.forEach((lyr) => {
+            lyr._setOpacity(opacity);
+        })
+    }
+
+    _setZIndex(zIndex) {
+        this._lyrs.forEach((lyr) => {
+            zIndex = lyr._setZIndex(zIndex);
+        })
+        return zIndex;
+    }
+
+    _addTo(map) {
+        this._lyrs.forEach((lyr) => {
+            lyr._addTo(map);
+        })
+    }
+
+    _removeFrom(map) {
+        this._lyrs.forEach((lyr) => {
+            lyr._removeFrom(map);
+        })
     }
 }
 
-class LeafletLayerManager {
-    static create(map, params) {
-        const baseLyrs = typeof params !== 'undefined' && typeof params.baseLyrs !== 'undefined' ? params.baseLyrs : [];
-        const lyrs = typeof params !== 'undefined' && typeof params.lyrs !== 'undefined' ? params.lyrs : [];
-        const managerOptions = typeof params !== 'undefined' && typeof params.managerOptions !== 'undefined' ? params.managerOptions : {};
-        const showLyrNames = typeof params !== 'undefined' && typeof params.showLyrNames !== 'undefined' ? params.showLyrNames : [];
-        const selectedBaseLyrName = typeof params !== 'undefined' && typeof params.selectedBaseLyrName !== 'undefined' ? params.selectedBaseLyrName : '';
+/*
+ * LyrObj, GrpObj共通
+ * - _setPane
+ * - _addTo
+ * - _removeFrom
+ * - _bringToFront
+ * - _setZIndex
+ * - _setStyle
+ * - _setOpacity
+ */
 
-        const m = new LeafletLayerManager(map, managerOptions);
+/*
+ * GrpObj, LayerManager共通
+ * - getIndexByName
+ * - findByName
+ * - hasLayer
+ */
 
-        baseLyrs.forEach((lyr) => {
-            m.addBaseLyr(lyr, false);
-        })
-        lyrs.forEach((lyr) => {
-            m.addLyr(lyr, false);
-        });
-        m._selectedBaseLyrName = selectedBaseLyrName;
-        m._shownLyrNames = showLyrNames;
-        m._update();
-        return m;
-    }
-
-    static createLyr(name, layer, params = {}) {
-        if (Array.isArray(layer)) {
-            const lyrs = layer.map((l) => {
-                return new Lyr(l.name, l.layer, l.params)
-            })
-            return new LyrGroup(name, lyrs, params)
-        } else {
-            return new Lyr(name, layer, params)
-        }
-    }
-
-    constructor(map, options = {}) {
-        this.map = map;
-        this.options = extend(true, defaultOptions, options);
-        this._baseLyrs = [];
+class LayerManager {
+    constructor(map, pane = undefined) {
+        this._map = map;
         this._lyrs = [];
-        this._selectedBaseLyrName = '';
-        this._shownLyrNames = [];
-        this._baseZIndex = this.options.baseZIndex;
-        this._lastZIndex = this.options.baseZIndex;
-        this._defaultSortRule = this.defaultSortRule;
-        this.ver = VERSION;
+        this._pane = typeof pane === 'string' ? pane : 'overlayPane';
+        if (typeof this._map.getPane(this._pane) === 'undefined') {
+            this._map.createPane(this._pane);
+        }
+
         return this;
     }
 
-    _getLyrs() {
-        // ベース、オーバーレイ問わずレイヤーすべてを取得
-        return this._baseLyrs.concat(this._lyrs);
+    _createChild(name, layer, props) {
+        if (Array.isArray(layer)) {
+            const lyrs = layer.map(({
+                name,
+                layer,
+                props
+            }) => {
+                return this._createChild(name, layer, props)
+            })
+            const lyr = new GrpObj(name, lyrs, props);
+            lyr._setPane(this._map, this._pane);
+            // https://github.com/Leaflet/Leaflet/blob/master/src/layer/Layer.js#L163
+            // 重複チェックはmap.addLayer側で行っている。
+            lyr._addTo(this._map);
+            return lyr;
+        }
+
+        const lyr = new LyrObj(name, layer, props);
+        lyr._setPane(this._map, this._pane);
+        lyr._addTo(this._map);
+        return lyr;
     }
 
-    _isBaseLyr(lyr) {
-        // 引数で指定されたnameのレイヤーがベースレイヤーか判定
-        return this._baseLyrs.includes(lyr);
-    }
+    _getParent(parentName) {
+        /**
+         * parentNameで指定された親要素(LayerManger or GrpObj)を探索する
+         * 経路上にLyrObjがあった場合はundefinedを返す
+         */
+        if (parentName === '') return this;
 
-    _sort(sortRule, deeply = false) {
-        // 表示中のレイヤーをLyrオブジェクトの情報を元に並び替え
-        if (!sortRule) sortRule = this.options.defaultSortRule;
-        this._lyrs.sort(sortRule);
-        if (deeply === true) {
-            this._lyrs.forEach((lyr) => {
-                if (lyr instanceof LyrGroup) {
-                    lyr._sort(sortRule);
+        const names = nameChain(parentName);
+        let parent = this;
+
+        for (let i = 0; i < names.length; i++) {
+            const name = names[i];
+            let child;
+            for (let i = 0; i < parent._lyrs.length; i++) {
+                if (parent._lyrs[i].name === name) {
+                    child = parent._lyrs[i];
+                    break;
                 }
-            })
-        }
-    }
-
-    _addAttribution(lyr) {
-        if (lyr instanceof LyrGroup) {
-            lyr._lyrs.forEach((l) => {
-                this._addAttribution(l);
-            })
-        } else {
-            if (typeof lyr.layer.options !== "undefined" && typeof lyr.layer.options.attribution !== "undefined") {
-                this.map.attributionControl.addAttribution(lyr.layer.options.attribution)
             }
-        }
 
-    }
-
-    _removeAttribution(lyr) {
-        if (lyr instanceof LyrGroup) {
-            lyr._lyrs.forEach((l) => {
-                this._removeAttribution(l);
-            })
-        } else {
-            if (typeof lyr.layer.options !== "undefined" && typeof lyr.layer.options.attribution !== "undefined") {
-                this.map.attributionControl.removeAttribution(lyr.layer.options.attribution)
-            }
-        }
-    }
-
-    _update() {
-        // 表示を更新、地図に追加されていないレイヤーは追加する
-        this._lastZIndex = this._baseZIndex;
-        this._baseLyrs.forEach((lyr) => {
-            if (lyr.name !== this._selectedBaseLyrName) {
-                lyr.hide();
-                this._removeAttribution(lyr);
-            }
-        });
-        const baseLyr = this.findByName(this._selectedBaseLyrName);
-        if (baseLyr) {
-            if (!baseLyr.isAdded()) {
-                baseLyr.addToMap(this.map);
-            }
-            baseLyr.show();
-            this._addAttribution(baseLyr);
-            this._lastZIndex = baseLyr.setZIndex(this._lastZIndex);
-        }
-
-        this._lyrs.forEach((lyr) => {
-            if (!this._shownLyrNames.includes(lyr.name)) {
-                lyr.hide();
-                this._removeAttribution(lyr);
+            if (child instanceof GrpObj) {
+                parent = child;
             } else {
-                if (!lyr.isAdded()) {
-                    lyr.addToMap(this.map);
-                }
-                lyr.show();
-                this._addAttribution(lyr);
-                this._lastZIndex = lyr.setZIndex(this._lastZIndex);
+                return;
             }
-        });
-    }
-
-    move(from, to) {
-        // レイヤーの並び順を変更する
-        from = adjustIndex(from, this._lyrs);
-        to = adjustIndex(to, this._lyrs);
-        if (from < this._lyrs.length) {
-            const lyr = this._lyrs.splice(from, 1)[0];
-
-            this._lyrs.splice(to, 0, lyr);
-            this._update();
         }
+        return parent;
     }
 
-    getIndexByName(name) {
-        const lyrs = this._getLyrs();
-        for (let i = 0; i < lyrs.length; i++) {
-            if (lyrs[i].name === name) {
-                return i
-            }
+    getIndexByName(name, options = {}) {
+        /**
+         * 名前で検索し直下のObjのインデックスを返す
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return -1;
+
+        for (let i = 0; i < parent._lyrs.length; i++) {
+            if (parent._lyrs[i].name === name) return i;
         }
         return -1;
     }
 
-    getIndexByLayer(layer) {
-        const lyrs = this._getLyrs();
-        for (let i = 0; i < lyrs.length; i++) {
-            if (lyrs[i].layer === layer) {
-                return i
-            }
-        }
-        return -1;
+    findByName(name, options = {}) {
+        /**
+         * 名前で検索しObjを返す
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        const index = parent.getIndexByName(name);
+        if (index >= 0) return parent._lyrs[index];
     }
 
-    findByName(name) {
-        // 引数で指定されたnameのLyrを返す。
-        const index = this.getIndexByName(name);
-        const lyrs = this._getLyrs();
-        if (index >= 0) return lyrs[index];
+    hasLayer(name, options = {}) {
+        /**
+         * nameのObjを要素に持つか判定する
+         * @param {string} name - レイヤー名
+         * @return {boolean} 有無
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        const index = parent.getIndexByName(name);
+        return index >= 0;
     }
 
-    findByLayer(layer) {
-        // 引数で指定されたlayerのLyrを返す。
-        // 引数で指定されたnameのLyrを返す。
-        const index = this.getIndexByLayer(layer);
-        const lyrs = this._getLyrs();
-        if (index >= 0) return lyrs[index];
-    }
+    add(layerParam = {}, options = {}) {
+        /**
+         * Objを追加する
+         */
+        options = extend(true, {
+            parentName: '',
+            index: -1
+        }, options);
 
-    addBaseLyr(lyr, selected = true) {
-        // Lyrをベースレイヤーに追加
-        add(lyr, this._baseLyrs);
-        lyr.setOpacity(this.options.defaultOpacity);
-        if (selected) {
-            this.selectBaseLyr(lyr.name);
-        }
-    }
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
 
-    selectBaseLyr(name) {
-        // ベースレイヤーを変更する
-        const lyr = this.findByName(name);
-        if (this._isBaseLyr(lyr)) {
-            this._selectedBaseLyrName = lyr.name;
+        if (!parent.hasLayer(layerParam.name)) {
+            const lyr = this._createChild(layerParam.name, layerParam.layer, layerParam.props);
+            addList(lyr, parent._lyrs, options.index);
             this._update();
         }
     }
 
-    addLyr(lyr, show = true, index = undefined) {
-        // Lyrを追加
-        add(lyr, this._lyrs, index);
-        lyr.setOpacity(this.options.defaultOpacity);
-        if (show === true) {
-            this.showLyr(lyr.name)
-        }
-    }
+    remove(name, options = {}) {
+        /**
+         * 配下のObjを削除する
+         * 地図からも削除
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
 
-    showLyr(name, toFront = false) {
-        // Lyrを表示する
-        const lyr = this.findByName(name);
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
 
-        if (lyr && !this._shownLyrNames.includes(name)) {
-            add(name, this._shownLyrNames);
-            if (toFront === true) {
-                const before = this.getIndexByName(name);
-                const after = this._lyrs.length;
-                this.move(before, after)
-            }
-            this._update();
-        }
-    }
-
-    hideLyr(name) {
-        // Lyrを非表示にする
-        const lyr = this.findByName(name);
+        const lyr = parent.findByName(name);
         if (lyr) {
-            remove(name, this._shownLyrNames);
+            lyr._removeFrom(this._map);
+            removeList(lyr, parent._lyrs);
+        }
+    }
+
+    reset(options) {
+        /**
+         * 配下の全要素削除
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        parent._lyrs.forEach((lyr) => {
+            lyr._removeFrom(this._map);
+        });
+        parent._lyrs = [];
+    }
+
+    replaceLayer(name, layer, props, options = {}) {
+        /**
+         * 指定されたnameの要素を置き換える
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        const index = parent.getIndexByName(name);
+        if (index >= 0) {
+            const lyr = this._createChild(name, layer, props);
+            parent._lyrs[index]._removeFrom(this._map);
+            parent._lyrs[index] = lyr;
             this._update();
         }
     }
 
-    removeLyr(name) {
-        // Lyrを削除にする
-        const lyr = this.findByName(name);
+    setLayers(layerParams, options = {}) {
+        /**
+         * 親要素(LayerManger or GrpObj)のlysを書き換える。
+         * force = falseの場合、すでに持っているlayerを再利用する(リロードされない)
+         */
+        options = extend(true, {
+            parentName: '',
+            forse: false
+        }, options);
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+        const newLyrs = [];
+        layerParams.forEach((layerParam) => {
+            layerParam = extend(true, {
+                name: '',
+                layer: undefined,
+                props: undefined
+            }, layerParam);
 
-        if (lyr) {
-            if (this._isBaseLyr(lyr)) {
-                remove(layerObj, this._baseLyrs);
-                if (this._shownBaseLyrName === lyr.name) {
-                    this._shownBaseLyrName = '';
-                }
+            let lyr;
+            if (options.force === true) {
+                lyr = this._createChild(layerParam.name, layerParam.layer, layerParam.props);
             } else {
-                remove(lyr, this._lyrs);
-                remove(lyr.name, this._shownLyrNames);
+                lyr = parent.findByName(layerParam.name);
+                if (lyr) {
+                    removeList(lyr, parent._lyrs);
+                } else {
+                    lyr = this._createChild(layerParam.name, layerParam.layer, layerParam.props);
+                }
             }
-            lyr.removeFromMap();
-        }
-    }
-
-    setOpacity(name, opacity) {
-        // nameでレイヤーを指定して透過率を変更する
-        const lyr = this.findByName(name);
-        if (lyr) {
-            lyr.setOpacity(opacity);
-        }
-    }
-
-    isShown(name) {
-        // 引数で指定されたnameのレイヤーが表示状態か判定
-        const lyr = this.findByName(name);
-        return !lyr && lyr._isShown();
-    }
-
-    sort(sortRule, deeply = false) {
-        // ソートする（ソートアルゴリズムは引き数(func)として指定できる）
-        this._sort(sortRule, deeply);
+            newLyrs.push(lyr);
+        });
+        parent._lyrs.forEach((lyr) => {
+            lyr._removeFrom(this._map);
+        });
+        parent._lyrs = newLyrs;
         this._update();
     }
 
-    group(name, methodName, ...params) {
-        // nameを指定したグループレイヤーのfunctionを実行する
-        const lyr = this.findByName(name);
-        if (lyr instanceof LyrGroup && typeof lyr[methodName] === 'function') {
-            return lyr[methodName](...params);
+    sort(sortFunc, options = {}) {
+        /**
+         * レイヤーのソート
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        if (typeof sortFunc === 'function') {
+            const parent = this._getParent(options.parentName);
+            if (typeof parent === 'undefined') return;
+            parent._lyrs.sort(sortFunc);
+            this._update();
         }
+    }
+
+    move(from, to, options = {}) {
+        /**
+         * レイヤーの並び順を変更する
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        from = adjustIndex(parent._lyrs, from);
+        to = adjustIndex(parent._lyrs, to);
+        if (to === parent._lyrs.length) to -= 1;
+
+        if (from !== to && from < parent._lyrs.length && to < parent._lyrs.length) {
+            const lyr = parent._lyrs.splice(from, 1)[0];
+
+            parent._lyrs.splice(to, 0, lyr);
+            this._update();
+        }
+    }
+
+    bringToFront(name, options = {}) {
+        /**
+         * 所属するグループ内で最前面にする
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        const index = parent.getIndexByName(name);
+        this.move(index, -1, {
+            parentName: options.parentName
+        });
+    }
+
+    bringToBack(name, options = {}) {
+        /**
+         * 所属するグループ内で最背面にする
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        const index = parent.getIndexByName(name);
+        this.move(index, 0, {
+            parentName: options.parentName
+        });
     }
 }
 
+class RasterLayerManager extends LayerManager {
+    _update() {
+        /**
+         * 表示状態を更新する
+         */
+        let zIndex = 0;
+        this._lyrs.forEach((lyr) => {
+            zIndex = lyr._setZIndex(zIndex);
+        });
 
-export default LeafletLayerManager;
+        // 同paneにベクター要素があった場合、最前面にする
+        var vectors = [].slice.call(this._map.getPane(this._pane).querySelectorAll('svg, canvas'));
+        vectors.forEach(function (el) {
+            el.style.zIndex = zIndex;
+        });
+    }
+
+    setOpacity(name, opacity, options = {}) {
+        /**
+         * 透過度を設定
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        const lyr = parent.findByName(name);
+        if (lyr)
+            lyr._setOpacity(opacity);
+    }
+}
+class VectorLayerManager extends LayerManager {
+    _update() {
+        /**
+         * 表示状態を更新する
+         */
+        this._lyrs.forEach((lyr) => {
+            lyr._bringToFront();
+        })
+    }
+
+    setStyle(name, style, options = {}) {
+        /**
+         * styleを設定
+         */
+        options = extend(true, {
+            parentName: ''
+        }, options);
+
+        const parent = this._getParent(options.parentName);
+        if (typeof parent === 'undefined') return;
+
+        const lyr = parent.findByName(name);
+        if (lyr)
+            lyr._setStyle(style);
+    }
+
+    setOpacity(name, opacity, options = {}) {
+        /**
+         * 透過度を設定
+         */
+        this.setStyle(name, {
+            opacity: opacity,
+            fillOpacity: opacity
+        }, options)
+    }
+}
+
+export default {
+    raster: (...args) => {
+        return new RasterLayerManager(...args)
+    },
+    vector: (...args) => {
+        return new VectorLayerManager(...args)
+    },
+};

@@ -4,7 +4,8 @@
   "description": "",
   "main": "",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development"
   },
   "keywords": [],
   "author": "",
@@ -13,15 +14,13 @@
     "@babel/core": "^7.7.7",
     "@babel/preset-env": "^7.7.7",
     "babel-loader": "^8.0.6",
-    "gulp": "^4.0.2",
     "terser-webpack-plugin": "^2.3.1",
     "webpack": "^4.41.5",
-    "webpack-stream": "^5.2.1"
-  },
-  "dependencies": {
-    "core-js": "^3.6.1",
+    "webpack-cli": "^3.3.11",
+    "webpack-stream": "^5.2.1",
     "jquery-extend": "^2.0.3",
     "regenerator-runtime": "^0.13.3"
   },
+  "dependencies": {},
   "private": true
 }
