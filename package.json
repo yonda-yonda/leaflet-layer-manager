@@ -2,14 +2,14 @@
   "name": "leaflet-layer-manager",
   "version": "0.0.1",
   "description": "",
-  "main": "",
+  "main": "dist/leaflet-layer-manager.js",
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack --mode development"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "yonda-yonda",
+  "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.7.7",
     "@babel/preset-env": "^7.7.7",

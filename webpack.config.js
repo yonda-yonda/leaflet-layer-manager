@@ -1,5 +1,7 @@
+const webpack = require('webpack');
 const TerserPlugin = require('terser-webpack-plugin');
 const path = require('path');
+const package = require('./package.json');
 
 module.exports = {
     entry: './src/main.js',
@@ -8,6 +10,11 @@ module.exports = {
         path: path.join(__dirname, "dist"),
         filename: "leaflet-layer-manager.js"
     },
+    plugins: [
+        new webpack.BannerPlugin({
+            banner: `${package.name} v${package.version} | ${package.author} | license: ${package.license}`
+        })
+    ],
     module: {
         rules: [{
             test: /\.js$/,

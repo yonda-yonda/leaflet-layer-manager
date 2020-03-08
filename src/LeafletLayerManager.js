@@ -1,6 +1,7 @@
 import extend from 'jquery-extend';
-
-const VERSION = '0.0.5';
+import {
+    version
+} from '../package.json';
 
 const nameChain = (name) => {
     /**
@@ -623,8 +624,8 @@ class VectorLayerManager extends LayerManager {
         }, options)
     }
 }
-
 export default {
+    version: version,
     raster: (...args) => {
         return new RasterLayerManager(...args)
     },
