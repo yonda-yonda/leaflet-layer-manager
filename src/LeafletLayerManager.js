@@ -422,7 +422,7 @@ class LayerManager {
         parent._lyrs = [];
     }
 
-    replaceLayer(name, layer, props, options = {}) {
+    replaceLayer(layerParam = {}, options = {}) {
         /**
          * 指定されたnameの要素を置き換える
          */
@@ -433,9 +433,9 @@ class LayerManager {
         const parent = this._getParent(options.parentName);
         if (typeof parent === 'undefined') return;
 
-        const index = parent.getIndexByName(name);
+        const index = parent.getIndexByName(layerParam.name);
         if (index >= 0) {
-            const lyr = this._createChild(name, layer, props);
+            const lyr = this._createChild(layerParam.name, layerParam.layer, layerParam.props);
             parent._lyrs[index]._removeFrom(this._map);
             parent._lyrs[index] = lyr;
             this._update();
