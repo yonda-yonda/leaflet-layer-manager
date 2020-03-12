@@ -106,10 +106,12 @@ class LyrObj {
     }
 
     _setStyle(style) {
+        console.log(style);
         const invoke = (layer, style) => {
             if (typeof layer.setStyle !== 'undefined') {
                 layer.setStyle(style);
-            } else if (typeof layer._layers !== 'undefined') {
+            };
+            if (typeof layer._layers !== 'undefined') {
                 Object.keys(layer._layers).forEach((key) => {
                     invoke(layer._layers[key], style);
                 })
@@ -122,7 +124,8 @@ class LyrObj {
         const invoke = (layer, opacity) => {
             if (typeof layer.setOpacity !== 'undefined') {
                 layer.setOpacity(opacity);
-            } else if ('_layers' in layer) {
+            };
+            if (typeof layer._layers !== 'undefined') {
                 Object.keys(layer._layers).forEach((key) => {
                     invoke(layer._layers[key], opacity);
                 })
@@ -458,7 +461,7 @@ class LayerManager {
             layerParam = extend(true, {
                 name: '',
                 layer: undefined,
-                props: undefined
+                props: {}
             }, layerParam);
 
             let lyr;
