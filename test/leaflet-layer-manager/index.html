@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<title>Mocha Tests</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
+	<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+		integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+</head>
+
+<body>
+	<div id="mocha"></div>
+	<script src="https://unpkg.com/chai/chai.js"></script>
+	<script src="https://unpkg.com/mocha/mocha.js"></script>
+
+	<script class="mocha-init">
+		mocha.setup('bdd');
+	</script>
+
+	<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"></script>
+	<script src="../../dist/leaflet-layer-manager.js"></script>
+	<script src="test.spec.js"></script>
+	<script class="mocha-exec">
+		mocha.run();
+	</script>
+</body>
+
+</html>
