@@ -106,7 +106,6 @@ class LyrObj {
     }
 
     _setStyle(style) {
-        console.log(style);
         const invoke = (layer, style) => {
             if (typeof layer.setStyle !== 'undefined') {
                 layer.setStyle(style);
