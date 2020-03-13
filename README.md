@@ -107,7 +107,7 @@ manager.add({
 
 #### 引数
 ##### `layerParam`
-`object` 必須
+`object` レイヤー設定 必須
 ```
 {  
     name: {string} レイヤー名(必須),  
@@ -270,7 +270,7 @@ manager.replaceLayer({
 
 #### 引数
 ##### `layerParam`
-`object` 必須
+`object` レイヤー設定項目必須
 ```
 {  
     name: {string} レイヤー名(必須)　この値とnameが一致する要素と入れ替える ,  
